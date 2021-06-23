@@ -9,5 +9,6 @@ require (
 	github.com/mattn/go-isatty v0.0.13 // indirect
 	github.com/posener/complete v1.2.3 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
+	github.com/valyala/fasttemplate v1.2.1 // indirect
 	github.com/willabides/kongplete v0.2.0 // indirect
 )
