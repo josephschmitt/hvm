@@ -48,7 +48,7 @@ func createRunFile(path string, str string) error {
 		return err
 	}
 
-	err = os.WriteFile(path, []byte(str), 0644)
+	err = os.WriteFile(path, []byte(str), 0755)
 	if err != nil {
 		return err
 	}
