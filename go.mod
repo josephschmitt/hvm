@@ -8,5 +8,6 @@ require (
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0 // indirect
 	github.com/mattn/go-isatty v0.0.13 // indirect
 	github.com/posener/complete v1.2.3 // indirect
+	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/willabides/kongplete v0.2.0 // indirect
 )
