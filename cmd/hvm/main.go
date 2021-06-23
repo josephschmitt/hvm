@@ -4,9 +4,9 @@ import (
 	_ "embed"
 	"os"
 
-	"github.com/josephschmitt/hvm/commands/link"
-	"github.com/josephschmitt/hvm/commands/run"
-	"github.com/josephschmitt/hvm/commands/version"
+	"github.com/josephschmitt/hvm/cmd/hvm/link"
+	"github.com/josephschmitt/hvm/cmd/hvm/run"
+	"github.com/josephschmitt/hvm/cmd/hvm/version"
 	"github.com/josephschmitt/hvm/context"
 	log "github.com/sirupsen/logrus"
 
