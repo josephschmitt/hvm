@@ -4,7 +4,7 @@ import (
 	_ "embed"
 	"os"
 
-	"github.com/josephschmitt/hvm/commands/install"
+	"github.com/josephschmitt/hvm/commands/link"
 	"github.com/josephschmitt/hvm/commands/run"
 	"github.com/josephschmitt/hvm/commands/version"
 	"github.com/josephschmitt/hvm/context"
@@ -20,10 +20,10 @@ var hvm struct {
 
 	Version            version.VersionFlag          `kong:"help='Show version information.'"`
 	VersionCmd         version.VersionCmd           `kong:"cmd,name='version',help='Show version information.'"`
-	InstallCompletions kongplete.InstallCompletions `kong:"cmd,help='install shell completions'"`
+	InstallCompletions kongplete.InstallCompletions `kong:"cmd,help='Install shell completions'"`
 
-	Install install.InstallCmd `kong:"cmd,help='Add a new hermetic dependency library'"`
-	Run     run.RunCmd         `kong:"cmd,help='Run a hermetic dependency'"`
+	Link link.LinkCmd `kong:"cmd,help='Add a new hermetic dependency library'"`
+	Run  run.RunCmd   `kong:"cmd,help='Run a hermetic dependency'"`
 }
 
 func main() {

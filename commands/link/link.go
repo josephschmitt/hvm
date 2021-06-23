@@ -1,4 +1,4 @@
-package install
+package link
 
 import (
 	_ "embed"
@@ -12,11 +12,11 @@ import (
 	"github.com/valyala/fasttemplate"
 )
 
-type InstallCmd struct {
-	Name []string `kong:"arg,help='Project to install'"`
+type LinkCmd struct {
+	Name []string `kong:"arg,help='Project to link to your global bin'"`
 }
 
-func (c *InstallCmd) Run() error {
+func (c *LinkCmd) Run() error {
 	man, _ := manifest.GetManifest()
 
 	t := fasttemplate.New(string(runscriptFile), "{{", "}}")
@@ -33,7 +33,7 @@ func (c *InstallCmd) Run() error {
 			return err
 		}
 
-		log.Infof(colour.Sprintf("Installed at: ^3%s^R", depPath))
+		log.Infof(colour.Sprintf("Linked at: ^3%s^R", depPath))
 	}
 
 	return nil
