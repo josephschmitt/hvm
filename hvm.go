@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -88,15 +89,15 @@ func Run(name string, args ...string) error {
 		return err
 	}
 
-	if err := Download(dep); err != nil {
+	if err := DownloadAndExtract(dep, conf); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func Download(dep *dep.Dependency) error {
-	log.Debugf(colour.Sprintf("Download ^2%s^3\n", dep.Source))
+func DownloadAndExtract(dep *dep.Dependency, conf *dep.Config) error {
+	log.Debugf(colour.Sprintf("Downloading ^2%s^R...\n", dep.Source))
 
 	resp, err := http.Get(dep.Source)
 	if err != nil {
@@ -106,20 +107,42 @@ func Download(dep *dep.Dependency) error {
 
 	dlFilePath := filepath.Join(Paths.TempDirectory, filepath.Base(dep.Source))
 
-	// Create the file
-	out, err := os.Create(dlFilePath)
+	dl, err := os.Create(dlFilePath)
 	if err != nil {
 		return err
 	}
-	defer out.Close()
+	defer dl.Close()
 
-	// Write the body to file
-	_, err = io.Copy(out, resp.Body)
+	_, err = io.Copy(dl, resp.Body)
 	if err != nil {
 		return err
 	}
 
 	log.Debugf(colour.Sprintf("Downloaded file to ^6%s^R\n", dlFilePath))
+
+	if len(dep.Extract) != 0 {
+		err := os.MkdirAll(conf.OutputDir, os.ModePerm)
+		if err != nil {
+			return err
+		}
+
+		file, err := os.Open(dlFilePath)
+		if err != nil {
+			return err
+		}
+
+		cmd := exec.Command(dep.Extract[0], dep.Extract[1:]...)
+		cmd.Dir = Paths.TempDirectory
+		cmd.Stdout = nil
+		cmd.Stderr = nil
+		cmd.Stdin = file
+
+		if err := cmd.Run(); err != nil {
+			return err
+		}
+
+		log.Debugf(colour.Sprintf("Extracted to ^3%s^R\n", conf.OutputDir))
+	}
 
 	return nil
 }

@@ -10,8 +10,9 @@ import (
 )
 
 type Config struct {
-	Version  string
-	Platform string
+	Version   string
+	Platform  string
+	OutputDir string
 }
 
 type Dependency struct {
@@ -20,11 +21,16 @@ type Dependency struct {
 	Test        string   `hcl:"test"`
 	Binaries    []string `hcl:"binaries"`
 	Source      string   `hcl:"source"`
+	Extract     []string `hcl:"extract"`
 }
 
 func GetDepConfig(name string, pths *paths.Paths) *Config {
 	// TODO: Hard-coded for now until we read config files from disk
-	return &Config{Version: "16.0.0", Platform: "darwin-arm64"}
+	return &Config{
+		Version:   "16.0.0",
+		Platform:  "darwin-arm64",
+		OutputDir: filepath.Join(pths.ConfigDirectory, name, "16.0.0"),
+	}
 }
 
 func ResolveDep(name string, config *Config, pths *paths.Paths) (*Dependency, error) {
@@ -37,6 +43,7 @@ func ResolveDep(name string, config *Config, pths *paths.Paths) (*Dependency, er
 	s := t.ExecuteString(map[string]interface{}{
 		"version":  config.Version,
 		"platform": config.Platform,
+		"output":   config.OutputDir,
 	})
 
 	repo := &Dependency{}
