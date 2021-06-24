@@ -14,6 +14,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/alecthomas/kong"
+	konghcl "github.com/alecthomas/kong-hcl"
 	"github.com/posener/complete"
 	"github.com/willabides/kongplete"
 )
@@ -38,7 +39,7 @@ func main() {
 
 	parser := kong.Must(&hvm, kong.HelpOptions{
 		Tree: true,
-	}, kong.Configuration(kong.JSON, filepath.Join(pths.ConfigDirectory, "config.json")))
+	}, kong.Configuration(konghcl.Loader, filepath.Join(pths.ConfigDirectory, "config.hcl")))
 
 	kongplete.Complete(parser,
 		kongplete.WithPredictor("file", complete.PredictFiles("*")),
