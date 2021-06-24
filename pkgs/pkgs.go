@@ -33,9 +33,9 @@ func NewPackage(name string, pths *paths.Paths) *Package {
 	log.Debugf("NewPackage %s %+v\n", name, pths)
 
 	dirs := []string{
-		pths.WorkingDirectory,
-		pths.GitRoot,
-		pths.ConfigDirectory,
+		filepath.Join(pths.WorkingDirectory, ".hvm"),
+		filepath.Join(pths.GitRoot, ".hvm"),
+		filepath.Join(pths.HomeDirectory, ".hvm"),
 	}
 
 	pkg := &Package{}
