@@ -6,6 +6,7 @@ import (
 
 	"github.com/josephschmitt/hvm/cmd/hvm/link"
 	"github.com/josephschmitt/hvm/cmd/hvm/run"
+	"github.com/josephschmitt/hvm/cmd/hvm/unlink"
 	"github.com/josephschmitt/hvm/cmd/hvm/version"
 	"github.com/josephschmitt/hvm/context"
 	log "github.com/sirupsen/logrus"
@@ -22,8 +23,9 @@ var hvm struct {
 	VersionCmd         version.VersionCmd           `kong:"cmd,name='version',help='Show version information.'"`
 	InstallCompletions kongplete.InstallCompletions `kong:"cmd,help='Install shell completions'"`
 
-	Link link.LinkCmd `kong:"cmd,help='Add a new hermetic dependency library'"`
-	Run  run.RunCmd   `kong:"cmd,help='Run a hermetic dependency'"`
+	Link   link.LinkCmd     `kong:"cmd,help='Link a new hermetic dependency library'"`
+	UnLink unlink.UnLinkCmd `kong:"cmd,aliases='unlink',help='Unlink an existing hermetic dependency library'"`
+	Run    run.RunCmd       `kong:"cmd,help='Run a hermetic dependency'"`
 }
 
 func main() {
