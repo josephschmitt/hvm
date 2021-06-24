@@ -12,14 +12,16 @@ const (
 )
 
 //go:embed runscript.tmpl
-var runscriptFile []byte
+var runScriptFile []byte
 
-func BuildRunScript() string {
+func BuildRunScript(name string, bin string) string {
 	man, _ := manifest.GetManifest()
 
-	t := fasttemplate.New(string(runscriptFile), "{{", "}}")
+	t := fasttemplate.New(string(runScriptFile), "{{", "}}")
 	return t.ExecuteString(map[string]interface{}{
 		"marker":  TemplateMarker,
 		"version": man.Version,
+		"name":    name,
+		"bin":     bin,
 	})
 }

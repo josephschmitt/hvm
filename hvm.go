@@ -19,23 +19,34 @@ import (
 )
 
 func Link(names []string) error {
-	script := tmpl.BuildRunScript()
-
 	for _, name := range names {
-		path := getScriptPath(name)
+		var bins []string
 
-		err := os.MkdirAll(filepath.Dir(path), os.ModePerm)
-		if err != nil {
-			return err
+		if conf, err := pkgs.NewPackageConfig(name, &pkgs.Package{}, paths.AppPaths); err == nil {
+			for k := range conf.Links {
+				bins = append(bins, k)
+			}
+		} else {
+			bins = append(bins, name)
 		}
 
-		err = os.WriteFile(path, []byte(script), 0755)
-		if err != nil {
-			return err
-		}
+		for _, bin := range bins {
+			script := tmpl.BuildRunScript(name, bin)
+			path := getScriptPath(bin)
 
-		log.Debugf(colour.Sprintf("Write run script:\n%s\n", script))
-		log.Infof(colour.Sprintf("Linked to: ^3%s^R", path))
+			err := os.MkdirAll(filepath.Dir(path), os.ModePerm)
+			if err != nil {
+				return err
+			}
+
+			err = os.WriteFile(path, []byte(script), 0755)
+			if err != nil {
+				return err
+			}
+
+			log.Debugf(colour.Sprintf("Write run script:\n%s\n", script))
+			log.Infof(colour.Sprintf("Linked to: ^3%s^R", path))
+		}
 	}
 
 	return nil
@@ -77,7 +88,7 @@ func UnLink(names []string, force bool) error {
 	return nil
 }
 
-func Run(name string, args ...string) error {
+func Run(name string, bin string, args ...string) error {
 	log.Debugf(colour.Sprintf("Run cmd [^2%s^R] with args: ^4%s^R\n",
 		name, colour.Sprintf(strings.Join(args, "^R, ^4"))))
 
@@ -87,11 +98,13 @@ func Run(name string, args ...string) error {
 		return err
 	}
 
-	if err := DownloadAndExtract(conf, pkg); err != nil {
-		return err
+	if !HasPackageLocally(conf, bin) {
+		if err := DownloadAndExtract(conf, pkg); err != nil {
+			return err
+		}
 	}
 
-	cmd := exec.Command(filepath.Join(conf.OutputDir, conf.Links[name]), args...)
+	cmd := exec.Command(filepath.Join(conf.OutputDir, conf.Links[bin]), args...)
 	cmd.Dir = paths.AppPaths.WorkingDirectory
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -102,6 +115,16 @@ func Run(name string, args ...string) error {
 	}
 
 	return nil
+}
+
+func HasPackageLocally(conf *pkgs.PackageConfig, bin string) bool {
+	binPath := filepath.Join(conf.OutputDir, conf.Links[bin])
+
+	if _, err := os.ReadFile(binPath); err == nil {
+		return true
+	}
+
+	return false
 }
 
 func DownloadAndExtract(conf *pkgs.PackageConfig, pkg *pkgs.Package) error {
