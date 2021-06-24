@@ -1,0 +1,8 @@
+#!/bin/bash
+
+manifestJson="manifest/manifest.json"
+
+if [ ! -f "${manifestJson}" ]; then
+  printf "{\"version\": \"dev\"}" > "${manifestJson}"
+  echo "Created sample manifest.json file"
+fi
