@@ -86,7 +86,7 @@ func NewPackageConfig(name string, pkg *Package, pths *paths.Paths) (*PackageCon
 	log.Debugf("NewPackageConfig %s %+v\n", name, pkg)
 
 	conf := &PackageConfig{
-		OutputDir: filepath.Join(pths.ConfigDirectory, PackageDownloads, name, "16.0.0"),
+		OutputDir: filepath.Join(pths.ConfigDirectory, PackageDownloads, name, pkg.Version),
 	}
 
 	pkgFilePath := filepath.Join(pths.ConfigDirectory, PackageRepository, name+".hcl")
