@@ -1,53 +1,122 @@
 package pkgs
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 
+	"github.com/alecthomas/colour"
 	"github.com/alecthomas/hcl"
 	"github.com/josephschmitt/hvm/paths"
+	log "github.com/sirupsen/logrus"
 	"github.com/valyala/fasttemplate"
 )
 
-type Config struct {
-	Version   string
-	Platform  string
+const PackageRepository = "hvm-packages"
+const PackageDownloads = "hvm-downloads"
+
+var xarch = map[string]string{
+	"amd64":  "x64",
+	"x86_64": "x64",
+	"arm64":  "arm64",
+}
+
+// Package is the reduced result of looking at all the app paths and deciding the specific
+// package we plan on pulling from the package repository
+type Package struct {
+	Version  string `hcl:"version"`
+	Platform string `hcl:"platform,optional"`
+}
+
+func NewPackage(name string, pths *paths.Paths) *Package {
+	log.Debugf("NewPackage %s %+v\n", name, pths)
+
+	dirs := []string{
+		pths.WorkingDirectory,
+		pths.GitRoot,
+		pths.ConfigDirectory,
+	}
+
+	pkg := &Package{}
+
+	for _, dir := range dirs {
+		confPath := filepath.Join(dir, name+".hcl")
+		hclFile, err := os.ReadFile(confPath)
+		if err != nil {
+			continue
+		}
+
+		localPkg := &Package{}
+		hcl.Unmarshal(hclFile, localPkg)
+
+		if pkg.Version == "" {
+			pkg.Version = localPkg.Version
+		}
+
+		if pkg.Platform == "" {
+			pkg.Platform = localPkg.Platform
+		}
+	}
+
+	if pkg.Platform == "" {
+		pkg.Platform = GetPlatform()
+	}
+
+	log.Debugf("Package %+v\n", pkg)
+
+	return pkg
+}
+
+// PackageConfig contains the parsed result of the .hcl config file for a package. It's used to
+// determine how to download a specific package project
+type PackageConfig struct {
+	Name        string            `hcl:"name"`
+	Description string            `hcl:"description"`
+	Test        string            `hcl:"test"`
+	Binaries    []string          `hcl:"binaries"`
+	Source      string            `hcl:"source"`
+	Extract     []string          `hcl:"extract"`
+	Links       map[string]string `hcl:"links"`
+
 	OutputDir string
 }
 
-type Package struct {
-	Name        string   `hcl:"name"`
-	Description string   `hcl:"description"`
-	Test        string   `hcl:"test"`
-	Binaries    []string `hcl:"binaries"`
-	Source      string   `hcl:"source"`
-	Extract     []string `hcl:"extract"`
-}
+func NewPackageConfig(name string, pkg *Package, pths *paths.Paths) (*PackageConfig, error) {
+	log.Debugf("NewPackageConfig %s %+v\n", name, pkg)
 
-func GetConfig(name string, pths *paths.Paths) *Config {
-	// TODO: Hard-coded for now until we read config files from disk
-	return &Config{
-		Version:   "16.0.0",
-		Platform:  "darwin-arm64",
-		OutputDir: filepath.Join(pths.ConfigDirectory, name, "16.0.0"),
+	conf := &PackageConfig{
+		OutputDir: filepath.Join(pths.ConfigDirectory, PackageDownloads, name, "16.0.0"),
 	}
-}
 
-func GetPackage(name string, config *Config, pths *paths.Paths) (*Package, error) {
-	data, err := os.ReadFile(filepath.Join(pths.ConfigDirectory, "deps", name+".hcl"))
-	if err != nil {
+	pkgFilePath := filepath.Join(pths.ConfigDirectory, PackageRepository, name+".hcl")
+	data, err := os.ReadFile(pkgFilePath)
+	if os.IsNotExist(err) {
+		return nil, fmt.Errorf(colour.Sprintf("no hvm-package found named \"^2%s^R\" at ^6%s^R\n"+
+			"Try updating your packages, or contributing a new one for \"^2%s^R\".",
+			name, pkgFilePath, name))
+	} else if err != nil {
 		return nil, err
 	}
 
 	t := fasttemplate.New(string(data), "${", "}")
 	s := t.ExecuteString(map[string]interface{}{
-		"version":  config.Version,
-		"platform": config.Platform,
-		"output":   config.OutputDir,
+		// TODO: Hard-coded for now until we read config files from disk
+		"version":  pkg.Version,
+		"platform": pkg.Platform,
+		"output":   conf.OutputDir,
 	})
 
-	repo := &Package{}
-	hcl.Unmarshal([]byte(s), repo)
+	hcl.Unmarshal([]byte(s), conf)
 
-	return repo, nil
+	log.Debugf("PackageConfig %+v\n", conf)
+
+	return conf, nil
+}
+
+func GetPlatform() string {
+	os := runtime.GOOS
+	arch := xarch[runtime.GOARCH]
+
+	return fmt.Sprintf("%s-%s", os, arch)
 }

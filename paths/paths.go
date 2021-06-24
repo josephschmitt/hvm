@@ -8,6 +8,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+var AppPaths *Paths
+
 type Paths struct {
 	GitRoot          string
 	WorkingDirectory string
@@ -45,7 +47,7 @@ func NewPathsFromDir(dir string) (*Paths, error) {
 		WorkingDirectory: dir,
 		HomeDirectory:    u.HomeDir,
 		ConfigDirectory:  filepath.Join(u.HomeDir, ".hvm"),
-		TempDirectory:    tmpDir,
+		TempDirectory:    filepath.Join(tmpDir, "hvm"),
 	}, nil
 }
 
@@ -70,4 +72,13 @@ func FindGitRoot() string {
 		return "."
 	}
 	return FindDirGitRoot(dir)
+}
+
+func init() {
+	pths, err := NewPaths()
+	if err != nil {
+		panic(err)
+	}
+
+	AppPaths = pths
 }
