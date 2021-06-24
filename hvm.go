@@ -12,7 +12,7 @@ import (
 
 	"github.com/alecthomas/colour"
 	"github.com/josephschmitt/hvm/paths"
-	"github.com/josephschmitt/hvm/project"
+	"github.com/josephschmitt/hvm/pkgs"
 	"github.com/josephschmitt/hvm/tmpl"
 	"github.com/kardianos/osext"
 	log "github.com/sirupsen/logrus"
@@ -83,29 +83,29 @@ func Run(name string, args ...string) error {
 	log.Debugf(colour.Sprintf("Run cmd [^2%s^R] with args: ^4%s^R\n",
 		name, colour.Sprintf(strings.Join(args, "^R, ^4"))))
 
-	conf := project.GetDepConfig(name, Paths)
-	proj, err := project.ResolveDep(name, conf, Paths)
+	conf := pkgs.GetConfig(name, Paths)
+	pkg, err := pkgs.GetPackage(name, conf, Paths)
 	if err != nil {
 		return err
 	}
 
-	if err := DownloadAndExtract(proj, conf); err != nil {
+	if err := DownloadAndExtract(pkg, conf); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func DownloadAndExtract(proj *project.Project, conf *project.Config) error {
-	log.Debugf(colour.Sprintf("Downloading ^2%s^R...\n", proj.Source))
+func DownloadAndExtract(pkg *pkgs.Package, conf *pkgs.Config) error {
+	log.Debugf(colour.Sprintf("Downloading ^2%s^R...\n", pkg.Source))
 
-	resp, err := http.Get(proj.Source)
+	resp, err := http.Get(pkg.Source)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
 
-	dlFilePath := filepath.Join(Paths.TempDirectory, filepath.Base(proj.Source))
+	dlFilePath := filepath.Join(Paths.TempDirectory, filepath.Base(pkg.Source))
 
 	dl, err := os.Create(dlFilePath)
 	if err != nil {
@@ -120,7 +120,7 @@ func DownloadAndExtract(proj *project.Project, conf *project.Config) error {
 
 	log.Debugf(colour.Sprintf("Downloaded file to ^6%s^R\n", dlFilePath))
 
-	if len(proj.Extract) != 0 {
+	if len(pkg.Extract) != 0 {
 		err := os.MkdirAll(conf.OutputDir, os.ModePerm)
 		if err != nil {
 			return err
@@ -131,7 +131,7 @@ func DownloadAndExtract(proj *project.Project, conf *project.Config) error {
 			return err
 		}
 
-		cmd := exec.Command(proj.Extract[0], proj.Extract[1:]...)
+		cmd := exec.Command(pkg.Extract[0], pkg.Extract[1:]...)
 		cmd.Dir = Paths.TempDirectory
 		cmd.Stdout = nil
 		cmd.Stderr = nil

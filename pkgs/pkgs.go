@@ -1,4 +1,4 @@
-package project
+package pkgs
 
 import (
 	"os"
@@ -15,7 +15,7 @@ type Config struct {
 	OutputDir string
 }
 
-type Project struct {
+type Package struct {
 	Name        string   `hcl:"name"`
 	Description string   `hcl:"description"`
 	Test        string   `hcl:"test"`
@@ -24,7 +24,7 @@ type Project struct {
 	Extract     []string `hcl:"extract"`
 }
 
-func GetDepConfig(name string, pths *paths.Paths) *Config {
+func GetConfig(name string, pths *paths.Paths) *Config {
 	// TODO: Hard-coded for now until we read config files from disk
 	return &Config{
 		Version:   "16.0.0",
@@ -33,7 +33,7 @@ func GetDepConfig(name string, pths *paths.Paths) *Config {
 	}
 }
 
-func ResolveDep(name string, config *Config, pths *paths.Paths) (*Project, error) {
+func GetPackage(name string, config *Config, pths *paths.Paths) (*Package, error) {
 	data, err := os.ReadFile(filepath.Join(pths.ConfigDirectory, "deps", name+".hcl"))
 	if err != nil {
 		return nil, err
@@ -46,7 +46,7 @@ func ResolveDep(name string, config *Config, pths *paths.Paths) (*Project, error
 		"output":   config.OutputDir,
 	})
 
-	repo := &Project{}
+	repo := &Package{}
 	hcl.Unmarshal([]byte(s), repo)
 
 	return repo, nil
