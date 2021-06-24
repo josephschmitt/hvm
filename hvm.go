@@ -4,15 +4,20 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/alecthomas/colour"
+	"github.com/josephschmitt/hvm/dep"
+	"github.com/josephschmitt/hvm/paths"
 	"github.com/josephschmitt/hvm/tmpl"
 	"github.com/kardianos/osext"
 	log "github.com/sirupsen/logrus"
 )
+
+var Paths *paths.Paths
 
 func Link(names []string) error {
 	script := tmpl.BuildRunScript()
@@ -74,8 +79,47 @@ func UnLink(names []string, force bool) error {
 }
 
 func Run(name string, args ...string) error {
-	log.Printf(colour.Sprintf("Run cmd [^2%s^R] with args: ^4%s^R\n",
+	log.Debugf(colour.Sprintf("Run cmd [^2%s^R] with args: ^4%s^R\n",
 		name, colour.Sprintf(strings.Join(args, "^R, ^4"))))
+
+	conf := dep.GetDepConfig(name, Paths)
+	dep, err := dep.ResolveDep(name, conf, Paths)
+	if err != nil {
+		return err
+	}
+
+	if err := Download(dep); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func Download(dep *dep.Dependency) error {
+	log.Debugf(colour.Sprintf("Download ^2%s^3\n", dep.Source))
+
+	resp, err := http.Get(dep.Source)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	dlFilePath := filepath.Join(Paths.TempDirectory, filepath.Base(dep.Source))
+
+	// Create the file
+	out, err := os.Create(dlFilePath)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	// Write the body to file
+	_, err = io.Copy(out, resp.Body)
+	if err != nil {
+		return err
+	}
+
+	log.Debugf(colour.Sprintf("Downloaded file to ^6%s^R\n", dlFilePath))
 
 	return nil
 }
@@ -96,4 +140,13 @@ func isHVMScript(file io.Reader) bool {
 	}
 
 	return false
+}
+
+func init() {
+	pths, err := paths.NewPaths()
+	if err != nil {
+		panic(err)
+	}
+
+	Paths = pths
 }

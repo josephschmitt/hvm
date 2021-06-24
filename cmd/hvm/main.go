@@ -3,12 +3,14 @@ package main
 import (
 	_ "embed"
 	"os"
+	"path/filepath"
 
 	"github.com/josephschmitt/hvm/cmd/hvm/link"
 	"github.com/josephschmitt/hvm/cmd/hvm/run"
 	"github.com/josephschmitt/hvm/cmd/hvm/unlink"
 	"github.com/josephschmitt/hvm/cmd/hvm/version"
 	"github.com/josephschmitt/hvm/context"
+	"github.com/josephschmitt/hvm/paths"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/alecthomas/kong"
@@ -17,7 +19,7 @@ import (
 )
 
 var hvm struct {
-	Debug string `kong:"default='warn',env=HVM_DEBUG"`
+	Debug string `kong:"default='warn',env='HVM_DEBUG'"`
 
 	Version            version.VersionFlag          `kong:"help='Show version information.'"`
 	VersionCmd         version.VersionCmd           `kong:"cmd,name='version',help='Show version information.'"`
@@ -29,9 +31,14 @@ var hvm struct {
 }
 
 func main() {
+	pths, err := paths.NewPaths()
+	if err != nil {
+		panic(err)
+	}
+
 	parser := kong.Must(&hvm, kong.HelpOptions{
 		Tree: true,
-	})
+	}, kong.Configuration(kong.JSON, filepath.Join(pths.ConfigDirectory, "config.json")))
 
 	kongplete.Complete(parser,
 		kongplete.WithPredictor("file", complete.PredictFiles("*")),
