@@ -128,7 +128,7 @@ func HasPackageLocally(conf *pkgs.PackageConfig, bin string) bool {
 }
 
 func DownloadAndExtract(conf *pkgs.PackageConfig, pkg *pkgs.Package) error {
-	log.Infof(colour.Sprintf("Downloading ^2%s^R...\n", conf.Source))
+	log.Infof(colour.Sprintf("Downloading ^3%s@%s^R from ^2%s^R...\n", conf.Name, pkg.Version, conf.Source))
 
 	resp, err := http.Get(conf.Source)
 	if err != nil {
@@ -153,7 +153,7 @@ func DownloadAndExtract(conf *pkgs.PackageConfig, pkg *pkgs.Package) error {
 		return err
 	}
 
-	log.Infof(colour.Sprintf("Downloaded file to ^6%s^R\n", dlFilePath))
+	log.Debugf(colour.Sprintf("Downloaded file to ^6%s^R\n", dlFilePath))
 
 	if len(conf.Extract) != 0 {
 		err := os.MkdirAll(conf.OutputDir, os.ModePerm)
@@ -178,7 +178,7 @@ func DownloadAndExtract(conf *pkgs.PackageConfig, pkg *pkgs.Package) error {
 			return err
 		}
 
-		log.Infof(colour.Sprintf("Extracted to ^3%s^R\n", conf.OutputDir))
+		log.Debugf(colour.Sprintf("Successfully extracted to ^3%s^R\n", conf.OutputDir))
 	}
 
 	return nil
