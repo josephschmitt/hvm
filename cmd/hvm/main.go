@@ -21,7 +21,7 @@ import (
 )
 
 var hvm struct {
-	Debug string `kong:"default='warn',env='HVM_DEBUG'"`
+	context.Config
 
 	Version            version.VersionFlag          `kong:"help='Show version information.'"`
 	VersionCmd         version.VersionCmd           `kong:"cmd,name='version',help='Show version information.'"`

@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/alecthomas/colour"
+	"github.com/josephschmitt/hvm/context"
 	"github.com/josephschmitt/hvm/paths"
 	"github.com/josephschmitt/hvm/pkgs"
 	"github.com/josephschmitt/hvm/tmpl"
@@ -22,7 +23,7 @@ func Link(names []string) error {
 	for _, name := range names {
 		var bins []string
 
-		if man, err := pkgs.NewPackageManifest(name, &pkgs.PackageOptions{}, paths.AppPaths); err == nil {
+		if man, err := pkgs.NewPackageManifest(name, &context.PackageOptions{}, paths.AppPaths); err == nil {
 			for k := range man.Bins {
 				bins = append(bins, k)
 			}
@@ -89,7 +90,7 @@ func UnLink(names []string, force bool) error {
 }
 
 func Run(name string, bin string, args ...string) error {
-	pkgOpt := &pkgs.PackageOptions{}
+	pkgOpt := &context.PackageOptions{}
 	pkgOpt.Resolve(name, paths.AppPaths)
 
 	man, err := pkgs.NewPackageManifest(name, pkgOpt, paths.AppPaths)
