@@ -10,12 +10,17 @@ import (
 
 var AppPaths *Paths
 
+const PackageRepository = "hvm-packages"
+const PackageDownloads = "hvm-downloads"
+
 type Paths struct {
 	GitRoot          string
 	WorkingDirectory string
 	HomeDirectory    string
 	ConfigDirectory  string
 	TempDirectory    string
+	ReposDirectory   string
+	PkgsDirectory    string
 }
 
 func NewPaths() (*Paths, error) {
@@ -42,12 +47,16 @@ func NewPathsFromDir(dir string) (*Paths, error) {
 		tmpDir = "/tmp"
 	}
 
+	configDir := filepath.Join(u.HomeDir, ".hvm")
+
 	return &Paths{
 		GitRoot:          gitRoot,
 		WorkingDirectory: dir,
 		HomeDirectory:    u.HomeDir,
-		ConfigDirectory:  filepath.Join(u.HomeDir, ".hvm"),
+		ConfigDirectory:  configDir,
 		TempDirectory:    filepath.Join(tmpDir, "hvm"),
+		ReposDirectory:   filepath.Join(configDir, PackageRepository),
+		PkgsDirectory:    filepath.Join(configDir, PackageDownloads),
 	}, nil
 }
 

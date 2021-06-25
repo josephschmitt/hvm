@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/josephschmitt/hvm/repos"
+
 	"github.com/alecthomas/colour"
 	"github.com/josephschmitt/hvm/context"
 	"github.com/josephschmitt/hvm/paths"
@@ -136,6 +138,11 @@ func HasPackageLocally(man *pkgs.PackageManifest, bin string) bool {
 	}
 
 	return false
+}
+
+func GetPackageRepos() error {
+	loader := repos.NewGitRepoLoader("", "")
+	return loader.Get()
 }
 
 func DownloadAndExtract(man *pkgs.PackageManifest) error {
