@@ -8,6 +8,7 @@ import (
 
 	"github.com/alecthomas/colour"
 	"github.com/alecthomas/hcl"
+	"github.com/josephschmitt/hvm/context"
 	"github.com/josephschmitt/hvm/paths"
 	log "github.com/sirupsen/logrus"
 	"github.com/valyala/fasttemplate"
@@ -22,96 +23,115 @@ var xarch = map[string]string{
 	"arm64":  "arm64",
 }
 
-// Package is the reduced result of looking at all the app paths and deciding the specific
+// PackageConfig is the reduced result of looking at all the app paths and deciding the specific
 // package we plan on pulling from the package repository
-type Package struct {
-	Version  string `hcl:"version"`
-	Platform string `hcl:"platform,optional"`
+type PackageConfig struct {
+	Packages []PackageBlock `hcl:"package,block,optional"`
 }
 
-func NewPackage(name string, pths *paths.Paths) *Package {
-	log.Debugf("NewPackage %s %+v\n", name, pths)
+type PackageBlock struct {
+	Name string `hcl:"name,label"`
+	PackageOptions
+}
 
-	dirs := []string{
-		filepath.Join(pths.WorkingDirectory, ".hvm"),
-		filepath.Join(pths.GitRoot, ".hvm"),
-		filepath.Join(pths.HomeDirectory, ".hvm"),
-	}
+type PackageOptions struct {
+	Version  string `hcl:"version,optional"`
+	Platform string `hcl:"platform,optional"`
 
-	pkg := &Package{}
+	Exec    string            `hcl:"exec,optional"`
+	Bins    map[string]string `hcl:"bins,optional"`
+	Source  string            `hcl:"source,optional"`
+	Extract string            `hcl:"extract,optional"`
 
-	for _, dir := range dirs {
-		confPath := filepath.Join(dir, name+".hcl")
+	OutputDir string
+}
+
+func (pkgOpt *PackageOptions) Resolve(name string, pths *paths.Paths) *PackageOptions {
+	configFiles := context.ConfigFiles(pths)
+
+	for _, confPath := range configFiles {
 		hclFile, err := os.ReadFile(confPath)
 		if err != nil {
 			continue
 		}
 
-		localPkg := &Package{}
-		hcl.Unmarshal(hclFile, localPkg)
+		config := &PackageConfig{}
+		hcl.Unmarshal(hclFile, config)
 
-		if pkg.Version == "" {
-			pkg.Version = localPkg.Version
+		for _, localPkgOpt := range config.Packages {
+			if localPkgOpt.Name != name {
+				continue
+			}
+
+			log.Debugf(colour.Sprintf("Found config options for ^3%s^R at ^5%s^R:\n%+v\n", name, confPath, config))
+
+			if pkgOpt.Version == "" {
+				pkgOpt.Version = localPkgOpt.Version
+			}
+
+			if pkgOpt.Platform == "" {
+				pkgOpt.Platform = localPkgOpt.Platform
+			}
 		}
 
-		if pkg.Platform == "" {
-			pkg.Platform = localPkg.Platform
+		if pkgOpt.Platform == "" {
+			pkgOpt.Platform = GetPlatform()
 		}
 	}
 
-	if pkg.Platform == "" {
-		pkg.Platform = GetPlatform()
-	}
+	log.Debugf(colour.Sprintf("Resolved PackageOptions %+v\n", pkgOpt))
 
-	log.Debugf("Package %+v\n", pkg)
-
-	return pkg
+	return pkgOpt
 }
 
-// PackageConfig contains the parsed result of the .hcl config file for a package. It's used to
+// PackageManifest contains the parsed result of the .hcl config file for a package. It's used to
 // determine how to download a specific package project
-type PackageConfig struct {
-	Name        string            `hcl:"name"`
-	Description string            `hcl:"description"`
-	Test        string            `hcl:"test"`
-	Binaries    []string          `hcl:"binaries"`
-	Source      string            `hcl:"source"`
-	Extract     []string          `hcl:"extract"`
-	Links       map[string]string `hcl:"links"`
+type PackageManifest struct {
+	Name        string `hcl:"name"`
+	Description string `hcl:"description"`
+	Test        string `hcl:"test"`
 
-	OutputDir string
+	PackageOptions
 }
 
-func NewPackageConfig(name string, pkg *Package, pths *paths.Paths) (*PackageConfig, error) {
-	log.Debugf("NewPackageConfig %s %+v\n", name, pkg)
+func NewPackageManifest(name string, opt *PackageOptions, pths *paths.Paths) (*PackageManifest, error) {
+	log.Debugf("NewPackageManifest %s %+v\n", name, opt)
 
-	conf := &PackageConfig{
-		OutputDir: filepath.Join(pths.ConfigDirectory, PackageDownloads, name, pkg.Version),
+	man := &PackageManifest{}
+	man.Version = opt.Version
+	man.Platform = opt.Platform
+	man.Exec = opt.Exec
+	man.Bins = opt.Bins
+	man.Source = opt.Source
+	man.Extract = opt.Extract
+	man.OutputDir = opt.OutputDir
+
+	if man.OutputDir == "" {
+		man.OutputDir = filepath.Join(pths.ConfigDirectory, PackageDownloads, name, opt.Version)
 	}
 
-	pkgFilePath := filepath.Join(pths.ConfigDirectory, PackageRepository, name+".hcl")
-	data, err := os.ReadFile(pkgFilePath)
+	configFilePath := filepath.Join(pths.ConfigDirectory, PackageRepository, name+".hcl")
+	data, err := os.ReadFile(configFilePath)
 	if os.IsNotExist(err) {
 		return nil, fmt.Errorf(colour.Sprintf("no hvm-package found named \"^2%s^R\" at ^6%s^R\n"+
 			"Try updating your packages, or contributing a new one for \"^2%s^R\".",
-			name, pkgFilePath, name))
+			name, configFilePath, name))
 	} else if err != nil {
 		return nil, err
 	}
 
 	t := fasttemplate.New(string(data), "${", "}")
 	s := t.ExecuteString(map[string]interface{}{
-		// TODO: Hard-coded for now until we read config files from disk
-		"version":  pkg.Version,
-		"platform": pkg.Platform,
-		"output":   conf.OutputDir,
+		"version":  opt.Version,
+		"platform": opt.Platform,
+		"output":   man.OutputDir,
 	})
 
-	hcl.Unmarshal([]byte(s), conf)
+	hcl.Unmarshal([]byte(s), man)
 
-	log.Debugf("PackageConfig %+v\n", conf)
+	log.Debugf("PackageManifest %+v\n", man)
 
-	return conf, nil
+	return man, nil
 }
 
 func GetPlatform() string {

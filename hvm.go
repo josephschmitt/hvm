@@ -22,8 +22,8 @@ func Link(names []string) error {
 	for _, name := range names {
 		var bins []string
 
-		if conf, err := pkgs.NewPackageConfig(name, &pkgs.Package{}, paths.AppPaths); err == nil {
-			for k := range conf.Links {
+		if man, err := pkgs.NewPackageManifest(name, &pkgs.PackageOptions{}, paths.AppPaths); err == nil {
+			for k := range man.Bins {
 				bins = append(bins, k)
 			}
 		} else {
@@ -89,27 +89,35 @@ func UnLink(names []string, force bool) error {
 }
 
 func Run(name string, bin string, args ...string) error {
-	log.Debugf(colour.Sprintf("Run cmd [^2%s^R] with args: ^4%s^R\n",
-		name, colour.Sprintf(strings.Join(args, "^R, ^4"))))
+	pkgOpt := &pkgs.PackageOptions{}
+	pkgOpt.Resolve(name, paths.AppPaths)
 
-	pkg := pkgs.NewPackage(name, paths.AppPaths)
-	conf, err := pkgs.NewPackageConfig(name, pkg, paths.AppPaths)
+	man, err := pkgs.NewPackageManifest(name, pkgOpt, paths.AppPaths)
 	if err != nil {
 		return err
 	}
 
-	if !HasPackageLocally(conf, bin) {
-		if err := DownloadAndExtract(conf, pkg); err != nil {
+	if !HasPackageLocally(man, bin) {
+		if err := DownloadAndExtract(man); err != nil {
 			return err
 		}
 	}
 
-	cmd := exec.Command(filepath.Join(conf.OutputDir, conf.Links[bin]), args...)
+	cmdName := filepath.Join(man.OutputDir, man.Bins[bin])
+	if man.Exec != "" {
+		args = append([]string{cmdName}, args...)
+		cmdName = man.Exec
+	}
+
+	log.Debugf(colour.Sprintf("Run ^3%s^R@%s^R with args ^5%s^R\n", cmdName, man.Version, args))
+
+	cmd := exec.Command(cmdName, args...)
 	cmd.Dir = paths.AppPaths.WorkingDirectory
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
 
+	log.Infof(colour.Sprintf("Using Hermetic ^3%s@%s^R\n", man.Name, man.Version))
 	if err := cmd.Run(); err != nil {
 		return err
 	}
@@ -117,8 +125,8 @@ func Run(name string, bin string, args ...string) error {
 	return nil
 }
 
-func HasPackageLocally(conf *pkgs.PackageConfig, bin string) bool {
-	binPath := filepath.Join(conf.OutputDir, conf.Links[bin])
+func HasPackageLocally(man *pkgs.PackageManifest, bin string) bool {
+	binPath := filepath.Join(man.OutputDir, man.Bins[bin])
 
 	if _, err := os.ReadFile(binPath); err == nil {
 		return true
@@ -127,16 +135,24 @@ func HasPackageLocally(conf *pkgs.PackageConfig, bin string) bool {
 	return false
 }
 
-func DownloadAndExtract(conf *pkgs.PackageConfig, pkg *pkgs.Package) error {
-	log.Infof(colour.Sprintf("Downloading ^3%s@%s^R from ^2%s^R...\n", conf.Name, pkg.Version, conf.Source))
+func DownloadAndExtract(man *pkgs.PackageManifest) error {
+	log.Infof(colour.Sprintf("Downloading ^3%s@%s^R from ^2%s^R...\n", man.Name, man.Version,
+		man.Source))
 
-	resp, err := http.Get(conf.Source)
+	if man.Version == "" {
+		return fmt.Errorf("invalid version \"%s\" for package \"%s\"", man.Version, man.Name)
+	}
+	if man.Source == "" || strings.Contains(man.Source, "${") {
+		return fmt.Errorf("invalid source \"%s\" for package \"%s\"", man.Source, man.Name)
+	}
+
+	resp, err := http.Get(man.Source)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
 
-	dlFilePath := filepath.Join(paths.AppPaths.TempDirectory, filepath.Base(conf.Source))
+	dlFilePath := filepath.Join(paths.AppPaths.TempDirectory, filepath.Base(man.Source))
 	err = os.MkdirAll(filepath.Dir(dlFilePath), os.ModePerm)
 	if err != nil {
 		return err
@@ -155,8 +171,13 @@ func DownloadAndExtract(conf *pkgs.PackageConfig, pkg *pkgs.Package) error {
 
 	log.Debugf(colour.Sprintf("Downloaded file to ^6%s^R\n", dlFilePath))
 
-	if len(conf.Extract) != 0 {
-		err := os.MkdirAll(conf.OutputDir, os.ModePerm)
+	extractCmdParts := strings.Split(man.Extract, " ")
+
+	if len(extractCmdParts) != 0 {
+		extractCmd := extractCmdParts[0]
+		extractArgs := extractCmdParts[1:]
+
+		err := os.MkdirAll(man.OutputDir, os.ModePerm)
 		if err != nil {
 			return err
 		}
@@ -166,9 +187,9 @@ func DownloadAndExtract(conf *pkgs.PackageConfig, pkg *pkgs.Package) error {
 			return err
 		}
 
-		log.Debugf("Extract cmd: %s %s", conf.Extract[0], strings.Join(conf.Extract[1:], " "))
+		log.Debugf("Extract: %s", man.Extract)
 
-		cmd := exec.Command(conf.Extract[0], conf.Extract[1:]...)
+		cmd := exec.Command(extractCmd, extractArgs...)
 		cmd.Dir = paths.AppPaths.TempDirectory
 		cmd.Stdout = nil
 		cmd.Stderr = nil
@@ -178,7 +199,7 @@ func DownloadAndExtract(conf *pkgs.PackageConfig, pkg *pkgs.Package) error {
 			return err
 		}
 
-		log.Debugf(colour.Sprintf("Successfully extracted to ^3%s^R\n", conf.OutputDir))
+		log.Debugf(colour.Sprintf("Successfully extracted to ^3%s^R\n", man.OutputDir))
 	}
 
 	return nil

@@ -5,12 +5,13 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/josephschmitt/hvm/paths"
+
 	"github.com/josephschmitt/hvm/cmd/hvm/link"
 	"github.com/josephschmitt/hvm/cmd/hvm/run"
 	"github.com/josephschmitt/hvm/cmd/hvm/unlink"
 	"github.com/josephschmitt/hvm/cmd/hvm/version"
 	"github.com/josephschmitt/hvm/context"
-	"github.com/josephschmitt/hvm/paths"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/alecthomas/kong"
@@ -32,14 +33,9 @@ var hvm struct {
 }
 
 func main() {
-	pths, err := paths.NewPaths()
-	if err != nil {
-		panic(err)
-	}
-
 	parser := kong.Must(&hvm, kong.HelpOptions{
 		Tree: true,
-	}, kong.Configuration(konghcl.Loader, filepath.Join(pths.ConfigDirectory, "config.hcl")))
+	}, kong.Configuration(konghcl.Loader, filepath.Join(paths.AppPaths.ConfigDirectory, "config.hcl")))
 
 	kongplete.Complete(parser,
 		kongplete.WithPredictor("file", complete.PredictFiles("*")),
