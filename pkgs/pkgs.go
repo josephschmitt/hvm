@@ -26,10 +26,11 @@ type PackageManifest struct {
 	context.PackageOptions
 }
 
-func NewPackageManifest(name string, opt *context.PackageOptions, pths *paths.Paths) (*PackageManifest, error) {
-	log.Debugf("NewPackageManifest %s %+v\n", name, opt)
-
-	man := &PackageManifest{}
+func (man *PackageManifest) Resolve(
+	name string,
+	opt *context.PackageOptions,
+	pths *paths.Paths,
+) (*PackageManifest, error) {
 	man.Version = opt.Version
 	man.Platform = opt.Platform
 	man.Exec = opt.Exec

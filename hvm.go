@@ -23,7 +23,9 @@ func Link(names []string) error {
 	for _, name := range names {
 		var bins []string
 
-		if man, err := pkgs.NewPackageManifest(name, &context.PackageOptions{}, paths.AppPaths); err == nil {
+		man := &pkgs.PackageManifest{}
+
+		if _, err := man.Resolve(name, &context.PackageOptions{}, paths.AppPaths); err == nil {
 			for k := range man.Bins {
 				bins = append(bins, k)
 			}
@@ -93,8 +95,8 @@ func Run(name string, bin string, args ...string) error {
 	pkgOpt := &context.PackageOptions{}
 	pkgOpt.Resolve(name, paths.AppPaths)
 
-	man, err := pkgs.NewPackageManifest(name, pkgOpt, paths.AppPaths)
-	if err != nil {
+	man := &pkgs.PackageManifest{}
+	if _, err := man.Resolve(name, pkgOpt, paths.AppPaths); err != nil {
 		return err
 	}
 
