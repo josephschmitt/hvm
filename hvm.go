@@ -120,8 +120,8 @@ func Run(ctx *context.Context, name string, bin string, args ...string) error {
 		return err
 	}
 
-	if !HasPackageLocally(man, bin) {
-		if err := DownloadAndExtract(man); err != nil {
+	if !hasPackageLocally(man, bin) {
+		if err := DownloadAndExtractPackage(ctx, man); err != nil {
 			return err
 		}
 	}
@@ -148,22 +148,17 @@ func Run(ctx *context.Context, name string, bin string, args ...string) error {
 	return nil
 }
 
-func HasPackageLocally(man *pkgs.PackageManifest, bin string) bool {
-	binPath := filepath.Join(man.OutputDir, man.Bins[bin])
-
-	if _, err := os.ReadFile(binPath); err == nil {
-		return true
-	}
-
-	return false
-}
-
-func GetPackageRepos() error {
+func GetPackageRepos(ctx *context.Context) error {
 	loader := repos.NewGitRepoLoader("", "")
 	return loader.Get()
 }
 
-func DownloadAndExtract(man *pkgs.PackageManifest) error {
+func UpdatePackagesRepos(ctx *context.Context) error {
+	loader := repos.NewGitRepoLoader("", "")
+	return loader.Update()
+}
+
+func DownloadAndExtractPackage(ctx *context.Context, man *pkgs.PackageManifest) error {
 	log.Infof(colour.Sprintf("Downloading ^3%s@%s^R from ^2%s^R...\n", man.Name, man.Version,
 		man.Source))
 
@@ -236,6 +231,16 @@ func DownloadAndExtract(man *pkgs.PackageManifest) error {
 func getScriptPath(name string) string {
 	binPath, _ := osext.Executable()
 	return filepath.Join(filepath.Dir(binPath), name)
+}
+
+func hasPackageLocally(man *pkgs.PackageManifest, bin string) bool {
+	binPath := filepath.Join(man.OutputDir, man.Bins[bin])
+
+	if _, err := os.ReadFile(binPath); err == nil {
+		return true
+	}
+
+	return false
 }
 
 func isHVMScript(file io.Reader) bool {

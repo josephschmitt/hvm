@@ -30,13 +30,9 @@ func (man *PackageManifest) Resolve(
 	pkg *context.Package,
 	pths *paths.Paths,
 ) (*PackageManifest, error) {
-	loader := repos.NewGitRepoLoader("", "")
 	if _, err := os.Stat(pths.ReposDirectory); os.IsNotExist(err) {
+		loader := repos.NewGitRepoLoader("", "")
 		if err := loader.Get(); err != nil {
-			return nil, err
-		}
-	} else {
-		if err := loader.Update(); err != nil {
 			return nil, err
 		}
 	}

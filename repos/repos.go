@@ -77,17 +77,27 @@ func (g *GitRepoLoader) Update() error {
 		return err
 	}
 
+	alreadyUpToDate := false
 	if err = worktree.Pull(&git.PullOptions{RemoteName: "origin"}); err != nil {
+		if err.Error() != "already up-to-date" {
+			return err
+		}
+
 		// If already up-to-date it throws an err, so just silence it here
-		log.Debugf("%s\n", err.Error())
-		return nil
+		alreadyUpToDate = true
 	}
 
 	ref, err := repo.Head()
 	if err != nil {
 		return err
 	}
-	log.Infof("Updated packages repository, now at %s\n", ref)
+
+	hash := ref.Hash()
+	if alreadyUpToDate {
+		log.Infof("Repository already up-to-date, at %s\n", hash)
+	} else {
+		log.Infof("Updated packages repository, now at %s\n", hash)
+	}
 
 	return nil
 }
