@@ -6,7 +6,7 @@
 *.dylib
 
 # Ignore hvm binary itself, but not any files or sub-folders named hvm
-hvm
+# hvm
 !hvm/*
 !hvm.*
 
