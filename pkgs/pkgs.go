@@ -27,7 +27,7 @@ type PackageManifest struct {
 
 func (man *PackageManifest) Resolve(
 	name string,
-	opt *context.Package,
+	pkg *context.Package,
 	pths *paths.Paths,
 ) (*PackageManifest, error) {
 	if _, err := os.Stat(pths.ReposDirectory); os.IsNotExist(err) {
@@ -37,12 +37,12 @@ func (man *PackageManifest) Resolve(
 		}
 	}
 
-	if err := mergo.Merge(&man.Package, opt); err != nil {
-		return nil, err
-	}
-
 	if man.OutputDir == "" {
-		man.OutputDir = filepath.Join(pths.PkgsDirectory, name, opt.Version)
+		if pkg.OutputDir != "" {
+			man.OutputDir = pkg.OutputDir
+		} else {
+			man.OutputDir = filepath.Join(pths.PkgsDirectory, name, pkg.Version)
+		}
 	}
 
 	configFilePath := filepath.Join(pths.ReposDirectory, name+".hcl")
@@ -55,16 +55,34 @@ func (man *PackageManifest) Resolve(
 		return nil, err
 	}
 
+	man.Render(data, pkg)
+
+	if err := mergo.Merge(&man.Package, pkg, mergo.WithOverride); err != nil {
+		log.Error(err)
+		return nil, err
+	}
+
+	// Need to re-run the template parsing after merging the configs
+	data, err = hcl.Marshal(man)
+	if err != nil {
+		return nil, err
+	}
+	man.Render(data, pkg)
+
+	log.Debugf("PackageManifest %+v\n", man)
+
+	return man, nil
+}
+
+func (man *PackageManifest) Render(data []byte, pkg *context.Package) *PackageManifest {
 	t := fasttemplate.New(string(data), "${", "}")
 	s := t.ExecuteString(map[string]interface{}{
-		"version":  opt.Version,
-		"platform": opt.Platform,
+		"version":  pkg.Version,
+		"platform": pkg.Platform,
 		"output":   man.OutputDir,
 	})
 
 	hcl.Unmarshal([]byte(s), man)
 
-	log.Debugf("PackageManifest %+v\n", man)
-
-	return man, nil
+	return man
 }

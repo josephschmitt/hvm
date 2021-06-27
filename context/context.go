@@ -70,13 +70,17 @@ func (context *Context) Synthesize() error {
 func (ctx *Context) Merge(config *Config) error {
 	for _, pkgConf := range config.Packages {
 		pkgOpt := pkgConf.GetPackage()
-		pkg := ctx.Packages[pkgConf.Name]
 
+		pkg := ctx.Packages[pkgConf.Name]
 		if pkg == nil {
-			ctx.Packages[pkgConf.Name] = pkgOpt
-		} else if err := mergo.Merge(pkg, pkgOpt); err != nil {
+			pkg = pkgOpt
+		}
+
+		if err := mergo.Merge(pkg, pkgOpt, mergo.WithOverride); err != nil {
 			return err
 		}
+
+		ctx.Packages[pkgConf.Name] = pkg
 	}
 
 	// Merge non-package fields
