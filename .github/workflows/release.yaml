@@ -1,0 +1,20 @@
+on:
+  release:
+    types: [created]
+
+jobs:
+  release-linux-amd64:
+    name: release linux/amd64
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Create manifest.json
+      run: |
+        echo "Setting version $GITHUB_REF on manifest.json"
+        echo "{\"version\": \"$GITHUB_REF\"}" >  manifest/manifest.json
+    - uses: wangyoucao577/go-release-action@v1.18
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        goos: linux
+        goarch: amd64
+        project_path: ./cmd/hvm
