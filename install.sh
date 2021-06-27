@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# This script installs the compass cli.
+# This script installs HVM
 #
 # Quick install: `curl -sfL "https://github.com/josephschmitt/hvm/raw/main/install.sh" | bash`
 
