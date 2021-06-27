@@ -176,7 +176,7 @@ func DownloadAndExtractPackage(ctx *context.Context, man *pkgs.PackageManifest) 
 	if err != nil {
 		return err
 	} else if resp.StatusCode >= 400 {
-		return fmt.Errorf(colour.Sprintf("failed to download ^3%s@%s^R from ^2%s^R...", man.Name,
+		return fmt.Errorf(colour.Sprintf("failed to download ^3%s@%s^R from ^1%s^R...", man.Name,
 			man.Version, man.Source))
 	}
 	defer resp.Body.Close()
