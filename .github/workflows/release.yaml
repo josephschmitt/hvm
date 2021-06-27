@@ -10,8 +10,9 @@ jobs:
     - uses: actions/checkout@v2
     - name: Create manifest.json
       run: |
-        echo "Setting version $GITHUB_REF on manifest.json"
-        echo "{\"version\": \"$GITHUB_REF\"}" >  manifest/manifest.json
+        ver=$(basename "$GITHUB_REF")
+        echo "Setting version $ver on manifest.json"
+        echo "{\"version\": \"$ver\"}" >  manifest/manifest.json
     - uses: wangyoucao577/go-release-action@v1.18
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
