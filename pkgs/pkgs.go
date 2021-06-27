@@ -73,6 +73,12 @@ func (man *PackageManifest) Resolve(
 	}
 	man.Render(data, pkg)
 
+	// If no bins set, assume the bin is named after the package
+	if len(man.Bins) == 0 {
+		man.Bins = make(map[string]string)
+		man.Bins[man.Name] = man.Name
+	}
+
 	log.Debugf("PackageManifest %+v\n", man)
 
 	return man, nil

@@ -44,13 +44,16 @@ func Link(ctx *context.Context, names []string, force bool) error {
 				return err
 			}
 
-			file, _ := os.Open(path)
+			file, err := os.Open(path)
+			if err != nil && !os.IsNotExist(err) {
+				return err
+			}
 			defer file.Close()
 
-			isHVMManaged := isHVMScript(file)
+			isHVMManaged := os.IsNotExist(err) || isHVMScript(file)
 
 			if isHVMManaged || force {
-				if err := os.Remove(path); err != nil {
+				if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
 					return err
 				}
 			} else {
@@ -194,21 +197,20 @@ func DownloadAndExtractPackage(ctx *context.Context, man *pkgs.PackageManifest) 
 
 	log.Debugf(colour.Sprintf("Downloaded file to ^6%s^R\n", dlFilePath))
 
-	extractCmdParts := strings.Split(man.Extract, " ")
+	err = os.MkdirAll(man.OutputDir, os.ModePerm)
+	if err != nil {
+		return err
+	}
 
-	if len(extractCmdParts) != 0 {
+	file, err := os.Open(dlFilePath)
+	if err != nil {
+		return err
+	}
+
+	if man.Extract != "" {
+		extractCmdParts := strings.Split(man.Extract, " ")
 		extractCmd := extractCmdParts[0]
 		extractArgs := extractCmdParts[1:]
-
-		err := os.MkdirAll(man.OutputDir, os.ModePerm)
-		if err != nil {
-			return err
-		}
-
-		file, err := os.Open(dlFilePath)
-		if err != nil {
-			return err
-		}
 
 		log.Debugf("Extract: %s", man.Extract)
 
@@ -223,6 +225,24 @@ func DownloadAndExtractPackage(ctx *context.Context, man *pkgs.PackageManifest) 
 		}
 
 		log.Debugf(colour.Sprintf("Successfully extracted to ^3%s^R\n", man.OutputDir))
+	} else {
+		outputPath := filepath.Join(man.OutputDir, man.Name)
+		outputFile, err := os.Create(outputPath)
+		if err != nil {
+			return err
+		}
+		defer outputFile.Close()
+
+		_, err = io.Copy(outputFile, file)
+		if err != nil {
+			return err
+		}
+
+		if err := os.Chmod(outputPath, 0755); err != nil {
+			return err
+		}
+
+		log.Debugf(colour.Sprintf("No extract in manifest, moved download to ^3%s^R\n", man.OutputDir))
 	}
 
 	return nil
