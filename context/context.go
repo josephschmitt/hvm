@@ -10,7 +10,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const DefaultLogLevel = "warning"
+const DefaultLogLevel = "info"
 
 type Context struct {
 	Debug *log.Level
