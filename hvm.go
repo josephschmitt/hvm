@@ -217,7 +217,7 @@ func DownloadAndExtractPackage(ctx *context.Context, man *pkgs.PackageManifest) 
 		cmd := exec.Command(extractCmd, extractArgs...)
 		cmd.Dir = paths.AppPaths.TempDirectory
 		cmd.Stdout = nil
-		cmd.Stderr = nil
+		cmd.Stderr = os.Stderr
 		cmd.Stdin = file
 
 		if err := cmd.Run(); err != nil {
