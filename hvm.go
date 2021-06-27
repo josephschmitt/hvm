@@ -21,7 +21,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func Link(ctx *context.Context, names []string) error {
+func Link(ctx *context.Context, names []string, force bool) error {
 	for _, name := range names {
 		var bins []string
 
@@ -44,13 +44,34 @@ func Link(ctx *context.Context, names []string) error {
 				return err
 			}
 
+			file, _ := os.Open(path)
+			defer file.Close()
+
+			isHVMManaged := isHVMScript(file)
+
+			if isHVMManaged || force {
+				if err := os.Remove(path); err != nil {
+					return err
+				}
+			} else {
+				errMsg := colour.Sprintf("attempting to link to an existing bin ^2%s^R which is NOT "+
+					"managed by HVM.\n", path) +
+					colour.Sprintf("Use the --overwrite flag if you wish to overwrite this file.")
+				return fmt.Errorf(errMsg)
+			}
+
 			err = os.WriteFile(path, []byte(script), 0755)
 			if err != nil {
 				return err
 			}
 
 			log.Debugf(colour.Sprintf("Write run script:\n%s\n", script))
-			log.Infof(colour.Sprintf("Linked to: ^3%s^R", path))
+
+			if !isHVMManaged && force {
+				log.Infof(colour.Sprintf("^1Forcibly^R overwrote: ^3%s^R", path))
+			} else {
+				log.Infof(colour.Sprintf("Linked to: ^3%s^R", path))
+			}
 		}
 	}
 
@@ -218,6 +239,10 @@ func getScriptPath(name string) string {
 }
 
 func isHVMScript(file io.Reader) bool {
+	if file == nil {
+		return false
+	}
+
 	scanner := bufio.NewScanner(file)
 
 	for scanner.Scan() {
