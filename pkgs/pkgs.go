@@ -7,6 +7,7 @@ import (
 
 	"github.com/alecthomas/colour"
 	"github.com/alecthomas/hcl"
+	"github.com/imdario/mergo"
 	"github.com/josephschmitt/hvm/context"
 	"github.com/josephschmitt/hvm/paths"
 	"github.com/josephschmitt/hvm/repos"
@@ -36,13 +37,9 @@ func (man *PackageManifest) Resolve(
 		}
 	}
 
-	man.Version = opt.Version
-	man.Platform = opt.Platform
-	man.Exec = opt.Exec
-	man.Bins = opt.Bins
-	man.Source = opt.Source
-	man.Extract = opt.Extract
-	man.OutputDir = opt.OutputDir
+	if err := mergo.Merge(&man.Package, opt); err != nil {
+		return nil, err
+	}
 
 	if man.OutputDir == "" {
 		man.OutputDir = filepath.Join(pths.PkgsDirectory, name, opt.Version)

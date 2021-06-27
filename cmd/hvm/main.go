@@ -36,9 +36,12 @@ func main() {
 		kongplete.WithPredictor("file", complete.PredictFiles("*")),
 	)
 
-	ctx, err := parser.Parse(os.Args[1:])
+	kCtx, err := parser.Parse(os.Args[1:])
 	parser.FatalIfErrorf(err)
 
-	err = ctx.Run(context.NewContext(hvm.Debug))
-	ctx.FatalIfErrorf(err)
+	ctx, err := context.NewContext(hvm.Debug)
+	kCtx.FatalIfErrorf(err)
+
+	err = kCtx.Run(ctx)
+	kCtx.FatalIfErrorf(err)
 }

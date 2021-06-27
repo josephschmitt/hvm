@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/alecthomas/hcl"
+	"github.com/imdario/mergo"
 
 	"github.com/josephschmitt/hvm/paths"
 	log "github.com/sirupsen/logrus"
@@ -18,15 +19,17 @@ type Context struct {
 	Packages     map[string]*Package
 }
 
-func NewContext(logLevel string) *Context {
+func NewContext(logLevel string) (*Context, error) {
 	ctx := &Context{}
-	ctx.Synthesize()
+	if err := ctx.Synthesize(); err != nil {
+		return nil, err
+	}
 
 	if ctx.Debug == nil {
 		ctx.SetLogLevel(DefaultLogLevel)
 	}
 
-	return ctx
+	return ctx, nil
 }
 
 func (ctx *Context) SetLogLevel(level string) (log.Level, error) {
@@ -41,7 +44,7 @@ func (ctx *Context) SetLogLevel(level string) (log.Level, error) {
 	return logLevel, nil
 }
 
-func (context *Context) Synthesize() *Context {
+func (context *Context) Synthesize() error {
 	if context.Packages == nil {
 		context.Packages = make(map[string]*Package)
 	}
@@ -56,21 +59,24 @@ func (context *Context) Synthesize() *Context {
 
 		foundConfig := &Config{}
 		hcl.Unmarshal(hclFile, foundConfig)
-		context.Merge(foundConfig)
+		if err := context.Merge(foundConfig); err != nil {
+			return err
+		}
 	}
 
-	return context
+	return nil
 }
 
-func (ctx *Context) Merge(config *Config) *Context {
+func (ctx *Context) Merge(config *Config) error {
 	for _, pkgConf := range config.Packages {
 		pkgOpt := pkgConf.GetPackage()
+		pkg := ctx.Packages[pkgConf.Name]
 
-		if ctx.Packages[pkgConf.Name] == nil {
+		if pkg == nil {
 			ctx.Packages[pkgConf.Name] = pkgOpt
+		} else if err := mergo.Merge(pkg, pkgOpt); err != nil {
+			return err
 		}
-
-		// TODO: Merge options
 	}
 
 	// Merge non-package fields
@@ -78,7 +84,7 @@ func (ctx *Context) Merge(config *Config) *Context {
 		ctx.SetLogLevel(config.Debug)
 	}
 
-	return ctx
+	return nil
 }
 
 // Config is the result of unmarshalling a config.hcl file
