@@ -2,6 +2,7 @@ package unlink
 
 import (
 	"github.com/josephschmitt/hvm"
+	"github.com/josephschmitt/hvm/context"
 )
 
 type UnLinkCmd struct {
@@ -9,6 +10,6 @@ type UnLinkCmd struct {
 	Force bool     `kong:"help='Force unlink script(s), even if not managed by HVM.'"`
 }
 
-func (c *UnLinkCmd) Run() error {
-	return hvm.UnLink(c.Name, c.Force)
+func (c *UnLinkCmd) Run(ctx *context.Context) error {
+	return hvm.UnLink(ctx, c.Name, c.Force)
 }

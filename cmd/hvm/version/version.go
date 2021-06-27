@@ -4,8 +4,9 @@ import (
 	_ "embed"
 	"os"
 
+	"github.com/josephschmitt/hvm/context"
+
 	"github.com/alecthomas/colour"
-	"github.com/alecthomas/kong"
 	"github.com/josephschmitt/hvm/manifest"
 )
 
@@ -29,6 +30,6 @@ func (*VersionFlag) BeforeApply() error {
 
 type VersionCmd struct{}
 
-func (*VersionCmd) Run(ctx *kong.Context) error {
+func (*VersionCmd) Run(ctx *context.Context) error {
 	return printVersion()
 }

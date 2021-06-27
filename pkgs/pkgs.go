@@ -18,15 +18,15 @@ import (
 // determine how to download a specific package project
 type PackageManifest struct {
 	Name        string `hcl:"name"`
-	Description string `hcl:"description"`
-	Test        string `hcl:"test"`
+	Description string `hcl:"description,optional"`
+	Test        string `hcl:"test,optional"`
 
-	context.PackageOptions
+	context.Package
 }
 
 func (man *PackageManifest) Resolve(
 	name string,
-	opt *context.PackageOptions,
+	opt *context.Package,
 	pths *paths.Paths,
 ) (*PackageManifest, error) {
 	if _, err := os.Stat(pths.ReposDirectory); os.IsNotExist(err) {

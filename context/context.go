@@ -1,71 +1,123 @@
 package context
 
 import (
-	"fmt"
 	"os"
-	"path/filepath"
-	"runtime"
 
-	"github.com/alecthomas/colour"
 	"github.com/alecthomas/hcl"
 
 	"github.com/josephschmitt/hvm/paths"
 	log "github.com/sirupsen/logrus"
 )
 
+const DefaultLogLevel = "warning"
+
 type Context struct {
-	Debug log.Level
-}
+	Debug *log.Level
 
-type Config struct {
-	Debug        string `kong:"default='warn',env='HVM_DEBUG'"`
 	Repositories []string
-
-	PackageConfig `hcl:"optional"`
+	Packages     map[string]*Package
 }
 
-func ConfigDirs(pths *paths.Paths) []string {
-	return []string{
-		filepath.Join(pths.WorkingDirectory, ".hvm"),
-		filepath.Join(pths.GitRoot, ".hvm"),
-		filepath.Join(pths.HomeDirectory, ".hvm"),
-	}
-}
+func NewContext(logLevel string) *Context {
+	ctx := &Context{}
+	ctx.Synthesize()
 
-func ConfigFiles(pths *paths.Paths) []string {
-	var files []string
-	for _, dir := range ConfigDirs(pths) {
-		files = append(files, filepath.Join(dir, "config.hcl"))
+	if ctx.Debug == nil {
+		ctx.SetLogLevel(DefaultLogLevel)
 	}
 
-	return files
+	return ctx
 }
 
-var xarch = map[string]string{
-	"amd64":  "x64",
-	"x86_64": "x64",
-	"arm64":  "arm64",
+func (ctx *Context) SetLogLevel(level string) (log.Level, error) {
+	logLevel, err := log.ParseLevel(level)
+	if err != nil {
+		return 0, err
+	}
+
+	log.SetLevel(logLevel)
+	ctx.Debug = &logLevel
+
+	return logLevel, nil
 }
 
-func Platform() string {
-	os := runtime.GOOS
-	arch := xarch[runtime.GOARCH]
+func (context *Context) Synthesize() *Context {
+	if context.Packages == nil {
+		context.Packages = make(map[string]*Package)
+	}
 
-	return fmt.Sprintf("%s-%s", os, arch)
+	configFiles := paths.ConfigFiles(paths.AppPaths)
+
+	for _, confPath := range configFiles {
+		hclFile, err := os.ReadFile(confPath)
+		if err != nil {
+			continue
+		}
+
+		foundConfig := &Config{}
+		hcl.Unmarshal(hclFile, foundConfig)
+		context.Merge(foundConfig)
+	}
+
+	return context
 }
 
-// PackageConfig is the reduced result of looking at all the app paths and deciding the specific
-// package we plan on pulling from the package repository
-type PackageConfig struct {
+func (ctx *Context) Merge(config *Config) *Context {
+	for _, pkgConf := range config.Packages {
+		pkgOpt := pkgConf.GetPackage()
+
+		if ctx.Packages[pkgConf.Name] == nil {
+			ctx.Packages[pkgConf.Name] = pkgOpt
+		}
+
+		// TODO: Merge options
+	}
+
+	// Merge non-package fields
+	if ctx.Debug == nil {
+		ctx.SetLogLevel(config.Debug)
+	}
+
+	return ctx
+}
+
+// Config is the result of unmarshalling a config.hcl file
+type Config struct {
+	Debug    string         `hcl:"debug,optional"`
 	Packages []PackageBlock `hcl:"package,block,optional"`
+}
+
+func (conf *Config) FindPackage(name string) *Package {
+	if len(conf.Packages) == 0 {
+		return nil
+	}
+
+	for _, pkg := range conf.Packages {
+		if name == pkg.Name {
+			return pkg.GetPackage()
+		}
+	}
+
+	return nil
 }
 
 type PackageBlock struct {
 	Name string `hcl:"name,label"`
-	PackageOptions
+	Package
 }
 
-type PackageOptions struct {
+func (b *PackageBlock) GetPackage() *Package {
+	return &Package{
+		Version:  b.Version,
+		Platform: b.Platform,
+		Exec:     b.Exec,
+		Bins:     b.Bins,
+		Source:   b.Source,
+		Extract:  b.Extract,
+	}
+}
+
+type Package struct {
 	Version  string `hcl:"version,optional"`
 	Platform string `hcl:"platform,optional"`
 
@@ -75,42 +127,4 @@ type PackageOptions struct {
 	Extract string            `hcl:"extract,optional"`
 
 	OutputDir string
-}
-
-func (pkgOpt *PackageOptions) Resolve(name string, pths *paths.Paths) *PackageOptions {
-	configFiles := ConfigFiles(pths)
-
-	for _, confPath := range configFiles {
-		hclFile, err := os.ReadFile(confPath)
-		if err != nil {
-			continue
-		}
-
-		config := &PackageConfig{}
-		hcl.Unmarshal(hclFile, config)
-
-		for _, localPkgOpt := range config.Packages {
-			if localPkgOpt.Name != name {
-				continue
-			}
-
-			log.Debugf(colour.Sprintf("Found config options for ^3%s^R at ^5%s^R:\n%+v\n", name, confPath, config))
-
-			if pkgOpt.Version == "" {
-				pkgOpt.Version = localPkgOpt.Version
-			}
-
-			if pkgOpt.Platform == "" {
-				pkgOpt.Platform = localPkgOpt.Platform
-			}
-		}
-
-		if pkgOpt.Platform == "" {
-			pkgOpt.Platform = Platform()
-		}
-	}
-
-	log.Debugf(colour.Sprintf("Resolved PackageOptions %+v\n", pkgOpt))
-
-	return pkgOpt
 }

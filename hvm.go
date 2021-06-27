@@ -21,13 +21,13 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func Link(names []string) error {
+func Link(ctx *context.Context, names []string) error {
 	for _, name := range names {
 		var bins []string
 
 		man := &pkgs.PackageManifest{}
 
-		if _, err := man.Resolve(name, &context.PackageOptions{}, paths.AppPaths); err == nil {
+		if _, err := man.Resolve(name, ctx.Packages[name], paths.AppPaths); err == nil {
 			for k := range man.Bins {
 				bins = append(bins, k)
 			}
@@ -57,7 +57,7 @@ func Link(names []string) error {
 	return nil
 }
 
-func UnLink(names []string, force bool) error {
+func UnLink(ctx *context.Context, names []string, force bool) error {
 	for _, name := range names {
 		path := getScriptPath(name)
 		file, err := os.Open(path)
@@ -93,12 +93,9 @@ func UnLink(names []string, force bool) error {
 	return nil
 }
 
-func Run(name string, bin string, args ...string) error {
-	pkgOpt := &context.PackageOptions{}
-	pkgOpt.Resolve(name, paths.AppPaths)
-
+func Run(ctx *context.Context, name string, bin string, args ...string) error {
 	man := &pkgs.PackageManifest{}
-	if _, err := man.Resolve(name, pkgOpt, paths.AppPaths); err != nil {
+	if _, err := man.Resolve(name, ctx.Packages[name], paths.AppPaths); err != nil {
 		return err
 	}
 

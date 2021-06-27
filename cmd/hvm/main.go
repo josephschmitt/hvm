@@ -3,25 +3,20 @@ package main
 import (
 	_ "embed"
 	"os"
-	"path/filepath"
-
-	"github.com/josephschmitt/hvm/paths"
 
 	"github.com/josephschmitt/hvm/cmd/hvm/link"
 	"github.com/josephschmitt/hvm/cmd/hvm/run"
 	"github.com/josephschmitt/hvm/cmd/hvm/unlink"
 	"github.com/josephschmitt/hvm/cmd/hvm/version"
 	"github.com/josephschmitt/hvm/context"
-	log "github.com/sirupsen/logrus"
 
 	"github.com/alecthomas/kong"
-	konghcl "github.com/alecthomas/kong-hcl"
 	"github.com/posener/complete"
 	"github.com/willabides/kongplete"
 )
 
 var hvm struct {
-	context.Config
+	Debug string `kong:"default='warn',env='HVM_DEBUG'"`
 
 	Version            version.VersionFlag          `kong:"help='Show version information.'"`
 	VersionCmd         version.VersionCmd           `kong:"cmd,name='version',help='Show version information.'"`
@@ -35,7 +30,7 @@ var hvm struct {
 func main() {
 	parser := kong.Must(&hvm, kong.HelpOptions{
 		Tree: true,
-	}, kong.Configuration(konghcl.Loader, filepath.Join(paths.AppPaths.ConfigDirectory, "config.hcl")))
+	})
 
 	kongplete.Complete(parser,
 		kongplete.WithPredictor("file", complete.PredictFiles("*")),
@@ -44,11 +39,6 @@ func main() {
 	ctx, err := parser.Parse(os.Args[1:])
 	parser.FatalIfErrorf(err)
 
-	debugLevel, err := log.ParseLevel(hvm.Debug)
-	if err == nil {
-		log.SetLevel(debugLevel)
-	}
-
-	err = ctx.Run(&context.Context{Debug: debugLevel})
+	err = ctx.Run(context.NewContext(hvm.Debug))
 	ctx.FatalIfErrorf(err)
 }

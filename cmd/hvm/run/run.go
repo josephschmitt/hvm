@@ -2,6 +2,7 @@ package run
 
 import (
 	"github.com/josephschmitt/hvm"
+	"github.com/josephschmitt/hvm/context"
 )
 
 type RunCmd struct {
@@ -11,11 +12,11 @@ type RunCmd struct {
 	Bin string
 }
 
-func (c *RunCmd) Run() error {
+func (c *RunCmd) Run(ctx *context.Context) error {
 	bin := c.Bin
 	if bin == "" {
 		bin = c.Name
 	}
 
-	return hvm.Run(c.Name, bin, c.Args...)
+	return hvm.Run(ctx, c.Name, bin, c.Args...)
 }
