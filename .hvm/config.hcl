@@ -1,3 +1,5 @@
+debug = "debug"
+
 package "node" {
   version = "16.3.0"
 }

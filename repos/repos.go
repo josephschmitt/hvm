@@ -60,6 +60,35 @@ func (g *GitRepoLoader) Get() error {
 }
 
 func (g *GitRepoLoader) Update() error {
+	log.Debugf("Update repo %s at %s\n", g.Name, g.Location)
+
+	clonePath := filepath.Join(paths.AppPaths.ReposDirectory)
+
+	w := log.New().WriterLevel(log.DebugLevel)
+	defer w.Close()
+
+	repo, err := git.PlainOpen(clonePath)
+	if err != nil {
+		return err
+	}
+
+	worktree, err := repo.Worktree()
+	if err != nil {
+		return err
+	}
+
+	if err = worktree.Pull(&git.PullOptions{RemoteName: "origin"}); err != nil {
+		// If already up-to-date it throws an err, so just silence it here
+		log.Debugf("%s\n", err.Error())
+		return nil
+	}
+
+	ref, err := repo.Head()
+	if err != nil {
+		return err
+	}
+	log.Infof("Updated packages repository, now at %s\n", ref)
+
 	return nil
 }
 
