@@ -166,10 +166,11 @@ func DownloadAndExtractPackage(ctx *context.Context, man *pkgs.PackageManifest) 
 		man.Source))
 
 	if man.Version == "" {
-		return fmt.Errorf("invalid version \"%s\" for package \"%s\"", man.Version, man.Name)
+		return fmt.Errorf("no version set for package \"%s\", please set a version in config.hcl",
+			man.Name)
 	}
 	if man.Source == "" || strings.Contains(man.Source, "${") {
-		return fmt.Errorf("invalid source \"%s\" for package \"%s\"", man.Source, man.Name)
+		return fmt.Errorf("no source URL set for package \"%s\"", man.Name)
 	}
 
 	resp, err := http.Get(man.Source)
