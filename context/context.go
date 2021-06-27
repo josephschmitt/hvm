@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"runtime"
-	"strings"
 
 	"github.com/alecthomas/hcl"
 	"github.com/imdario/mergo"
@@ -120,14 +119,12 @@ type PackageBlock struct {
 }
 
 func (b *PackageBlock) GetPackage() *Package {
-	return &Package{
-		Version:  b.Version,
-		Platform: b.Platform,
-		Exec:     b.Exec,
-		Bins:     b.Bins,
-		Source:   b.Source,
-		Extract:  b.Extract,
+	pkg := NewPackage()
+	if err := mergo.Merge(pkg, b.Package, mergo.WithOverride); err != nil {
+		return nil
 	}
+
+	return pkg
 }
 
 type Package struct {
@@ -148,26 +145,20 @@ func NewPackage() *Package {
 	}
 }
 
-func Platform() string {
-	os := runtime.GOOS
-	arch := runtime.GOARCH
+var arch = map[string]string{
+	"amd64": "x64",
+	"arm64": "arm64",
+}
 
-	return fmt.Sprintf("%s-%s", os, arch)
+func Platform() string {
+	return fmt.Sprintf("%s-%s", runtime.GOOS, arch[runtime.GOARCH])
 }
 
 var xarch = map[string]string{
 	"amd64": "x86_64",
-	"arm64": "aarch64",
+	"arm64": "arm64",
 }
 
 func XPlatform(platform string) string {
-	if platform == "" {
-		platform = Platform()
-	}
-
-	platformParts := strings.Split(platform, "-")
-	os := platformParts[0]
-	arch := xarch[platformParts[1]]
-
-	return fmt.Sprintf("%s-%s", os, arch)
+	return fmt.Sprintf("%s-%s", runtime.GOOS, xarch[runtime.GOARCH])
 }
