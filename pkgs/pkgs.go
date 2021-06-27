@@ -37,6 +37,10 @@ func (man *PackageManifest) Resolve(
 		}
 	}
 
+	if pkg == nil {
+		pkg = context.NewPackage()
+	}
+
 	if man.OutputDir == "" {
 		if pkg.OutputDir != "" {
 			man.OutputDir = pkg.OutputDir
@@ -77,9 +81,10 @@ func (man *PackageManifest) Resolve(
 func (man *PackageManifest) Render(data []byte, pkg *context.Package) *PackageManifest {
 	t := fasttemplate.New(string(data), "${", "}")
 	s := t.ExecuteString(map[string]interface{}{
-		"version":  pkg.Version,
-		"platform": pkg.Platform,
-		"output":   man.OutputDir,
+		"version":    pkg.Version,
+		"platform":   pkg.Platform,
+		"x-platform": context.XPlatform(pkg.Platform),
+		"output":     man.OutputDir,
 	})
 
 	hcl.Unmarshal([]byte(s), man)

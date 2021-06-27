@@ -1,7 +1,10 @@
 package context
 
 import (
+	"fmt"
 	"os"
+	"runtime"
+	"strings"
 
 	"github.com/alecthomas/hcl"
 	"github.com/imdario/mergo"
@@ -137,4 +140,34 @@ type Package struct {
 	Extract string            `hcl:"extract,optional"`
 
 	OutputDir string
+}
+
+func NewPackage() *Package {
+	return &Package{
+		Platform: Platform(),
+	}
+}
+
+func Platform() string {
+	os := runtime.GOOS
+	arch := runtime.GOARCH
+
+	return fmt.Sprintf("%s-%s", os, arch)
+}
+
+var xarch = map[string]string{
+	"amd64": "x86_64",
+	"arm64": "aarch64",
+}
+
+func XPlatform(platform string) string {
+	if platform == "" {
+		platform = Platform()
+	}
+
+	platformParts := strings.Split(platform, "-")
+	os := platformParts[0]
+	arch := xarch[platformParts[1]]
+
+	return fmt.Sprintf("%s-%s", os, arch)
 }
