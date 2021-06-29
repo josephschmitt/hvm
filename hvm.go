@@ -118,12 +118,7 @@ func UnLink(ctx *context.Context, names []string, force bool) error {
 func Run(ctx *context.Context, name string, bin string, args ...string) error {
 	manCtx := manifest.NewManifestContext(name, ctx.Use[bin], paths.AppPaths)
 
-	var manOpt *manifest.PackageManifestOptions
-	if ctx.Packages[name] != nil {
-		manOpt = &manifest.PackageManifestOptions{Source: ctx.Packages[name].Source}
-	}
-
-	man, err := manifest.NewPackageManfiest(name, manCtx, manOpt, paths.AppPaths)
+	man, err := manifest.NewPackageManfiest(name, manCtx, ctx.Packages[name], paths.AppPaths)
 	if err != nil {
 		return err
 	}
