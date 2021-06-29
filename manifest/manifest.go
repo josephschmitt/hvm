@@ -20,6 +20,7 @@ type PackageManifestOptions struct {
 	Bins    map[string]string `hcl:"bins,optional"`
 	Source  string            `hcl:"source,optional"`
 	Extract string            `hcl:"extract,optional"`
+	Test    string            `hcl:"test,optional"`
 }
 
 // PackageManifest contains the parsed result of the .hcl config file for a package. It's used to
@@ -125,7 +126,6 @@ func (man *PackageManifest) Merge(
 type PackageManifestConfig struct {
 	Name        string `hcl:"name"`
 	Description string `hcl:"description,optional"`
-	Test        string `hcl:"test,optional"`
 
 	PackageManifestOptions
 	Versions []PackageManifestVersionBlock `hcl:"version,block,optional"`
