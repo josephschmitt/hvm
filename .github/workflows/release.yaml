@@ -16,7 +16,7 @@ jobs:
       run: |
         ver=$(basename "$GITHUB_REF")
         echo "Setting version $ver on manifest.json"
-        echo "{\"version\": \"$ver\"}" >  manifest/manifest.json
+        echo "{\"version\": \"$ver\"}" >  cmd/hvm/version/manifest.json
     - uses: wangyoucao577/go-release-action@v1.18
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
