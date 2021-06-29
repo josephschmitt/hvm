@@ -7,11 +7,10 @@ import (
 	"github.com/josephschmitt/hvm/context"
 
 	"github.com/alecthomas/colour"
-	"github.com/josephschmitt/hvm/manifest"
 )
 
 func printVersion() error {
-	man, err := manifest.GetManifest()
+	man, err := GetVersionManifest()
 	if err != nil {
 		return err
 	}

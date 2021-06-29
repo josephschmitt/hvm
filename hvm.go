@@ -14,8 +14,8 @@ import (
 
 	"github.com/alecthomas/colour"
 	"github.com/josephschmitt/hvm/context"
+	"github.com/josephschmitt/hvm/manifest"
 	"github.com/josephschmitt/hvm/paths"
-	"github.com/josephschmitt/hvm/pkgs"
 	"github.com/josephschmitt/hvm/tmpl"
 	"github.com/kardianos/osext"
 	log "github.com/sirupsen/logrus"
@@ -25,10 +25,8 @@ func Link(ctx *context.Context, names []string, force bool) error {
 	for _, name := range names {
 		var bins []string
 
-		man := &pkgs.PackageManifest{}
-
-		if _, err := man.Resolve(name, ctx.Packages[name], paths.AppPaths); err == nil {
-			for k := range man.Bins {
+		if manConf, err := manifest.NewPackageManfiestConfig(name, paths.AppPaths); err == nil {
+			for k := range manConf.Bins {
 				bins = append(bins, k)
 			}
 		} else {
@@ -118,18 +116,25 @@ func UnLink(ctx *context.Context, names []string, force bool) error {
 }
 
 func Run(ctx *context.Context, name string, bin string, args ...string) error {
-	man := &pkgs.PackageManifest{}
-	if _, err := man.Resolve(name, ctx.Packages[name], paths.AppPaths); err != nil {
+	manCtx := manifest.NewManifestContext(name, ctx.Use[bin], paths.AppPaths)
+
+	var manOpt *manifest.PackageManifestOptions
+	if ctx.Packages[name] != nil {
+		manOpt = &manifest.PackageManifestOptions{Source: ctx.Packages[name].Source}
+	}
+
+	man, err := manifest.NewPackageManfiest(name, manCtx, manOpt, paths.AppPaths)
+	if err != nil {
 		return err
 	}
 
-	if !hasPackageLocally(man, bin) {
-		if err := DownloadAndExtractPackage(ctx, man); err != nil {
+	if !hasPackageLocally(manCtx.OutputDir, man.Bins[bin]) {
+		if err := DownloadAndExtractPackage(ctx, man, manCtx); err != nil {
 			return err
 		}
 	}
 
-	cmdName := filepath.Join(man.OutputDir, man.Bins[bin])
+	cmdName := filepath.Join(manCtx.OutputDir, man.Bins[bin])
 	if man.Exec != "" {
 		args = append([]string{cmdName}, args...)
 		cmdName = man.Exec
@@ -161,7 +166,11 @@ func UpdatePackagesRepos(ctx *context.Context) error {
 	return loader.Update()
 }
 
-func DownloadAndExtractPackage(ctx *context.Context, man *pkgs.PackageManifest) error {
+func DownloadAndExtractPackage(
+	ctx *context.Context,
+	man *manifest.PackageManifest,
+	manCtx *manifest.PackageManifestContext,
+) error {
 	log.Infof(colour.Sprintf("Downloading ^3%s@%s^R from ^2%s^R...\n", man.Name, man.Version,
 		man.Source))
 
@@ -201,7 +210,9 @@ func DownloadAndExtractPackage(ctx *context.Context, man *pkgs.PackageManifest) 
 
 	log.Debugf(colour.Sprintf("Downloaded file to ^6%s^R\n", dlFilePath))
 
-	err = os.MkdirAll(man.OutputDir, os.ModePerm)
+	outDir := manCtx.OutputDir
+
+	err = os.MkdirAll(outDir, os.ModePerm)
 	if err != nil {
 		return err
 	}
@@ -228,9 +239,9 @@ func DownloadAndExtractPackage(ctx *context.Context, man *pkgs.PackageManifest) 
 			return err
 		}
 
-		log.Debugf(colour.Sprintf("Successfully extracted to ^3%s^R\n", man.OutputDir))
+		log.Debugf(colour.Sprintf("Successfully extracted to ^3%s^R\n", outDir))
 	} else {
-		outputPath := filepath.Join(man.OutputDir, man.Name)
+		outputPath := filepath.Join(outDir, man.Name)
 		outputFile, err := os.Create(outputPath)
 		if err != nil {
 			return err
@@ -246,7 +257,7 @@ func DownloadAndExtractPackage(ctx *context.Context, man *pkgs.PackageManifest) 
 			return err
 		}
 
-		log.Debugf(colour.Sprintf("No extract in manifest, moved download to ^3%s^R\n", man.OutputDir))
+		log.Debugf(colour.Sprintf("No extract in manifest, moved download to ^3%s^R\n", outDir))
 	}
 
 	return nil
@@ -257,8 +268,8 @@ func getScriptPath(name string) string {
 	return filepath.Join(filepath.Dir(binPath), name)
 }
 
-func hasPackageLocally(man *pkgs.PackageManifest, bin string) bool {
-	binPath := filepath.Join(man.OutputDir, man.Bins[bin])
+func hasPackageLocally(outdir string, bin string) bool {
+	binPath := filepath.Join(outdir, bin)
 
 	if _, err := os.ReadFile(binPath); err == nil {
 		return true
