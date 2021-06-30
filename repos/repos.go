@@ -109,9 +109,9 @@ func (g *GitRepoLoader) Remove() error {
 }
 
 func (g *GitRepoLoader) HasPackage(name string) bool {
-	pkgPath := filepath.Join(g.Path, name)
+	pkgPath := filepath.Join(g.Path, name+".hcl")
 
-	if _, err := os.ReadDir(pkgPath); err == nil {
+	if _, err := os.ReadFile(pkgPath); err == nil {
 		return true
 	}
 
