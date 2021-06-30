@@ -22,7 +22,18 @@ import (
 )
 
 func Link(ctx *context.Context, names []string, force bool) error {
+	loader := repos.NewGitRepoLoader("", "")
+	loader.Update()
+	exitCode := 0
+
 	for _, name := range names {
+		if !loader.HasPackage(name) {
+			log.Errorf(colour.Sprintf("Package \"^3%s^R\" not found in package repository at ^6%s^R",
+				name, loader.GetLocation()))
+			exitCode++
+			continue
+		}
+
 		var bins []string
 
 		if manConf, err := manifest.NewPackageManfiestConfig(name, paths.AppPaths); err == nil {
@@ -76,6 +87,7 @@ func Link(ctx *context.Context, names []string, force bool) error {
 		}
 	}
 
+	os.Exit(exitCode)
 	return nil
 }
 

@@ -1,6 +1,7 @@
 package repos
 
 import (
+	"os"
 	"path/filepath"
 
 	"github.com/go-git/go-git/v5"
@@ -15,17 +16,22 @@ type RepoLoader interface {
 	Get() error
 	Update() error
 	Remove() error
+	HasPackage(name string) bool
+	GetPath() string
+	GetLocation() string
 }
 
 type GitRepoLoader struct {
 	Name     string
 	Location string
+	Path     string
 	Ref      plumbing.ReferenceName
 }
 
 func NewGitRepoLoader(name string, url string) RepoLoader {
 	loader := &GitRepoLoader{
 		Location: url,
+		Path:     filepath.Join(paths.AppPaths.ReposDirectory),
 	}
 
 	if loader.Location == "" {
@@ -40,12 +46,10 @@ func NewGitRepoLoader(name string, url string) RepoLoader {
 func (g *GitRepoLoader) Get() error {
 	log.Debugf("Get repo %s at %s\n", g.Name, g.Location)
 
-	clonePath := filepath.Join(paths.AppPaths.ReposDirectory)
-
 	w := log.New().WriterLevel(log.DebugLevel)
 	defer w.Close()
 
-	_, err := git.PlainClone(clonePath, false, &git.CloneOptions{
+	_, err := git.PlainClone(g.Path, false, &git.CloneOptions{
 		URL:           g.Location,
 		Progress:      w,
 		SingleBranch:  true,
@@ -62,12 +66,10 @@ func (g *GitRepoLoader) Get() error {
 func (g *GitRepoLoader) Update() error {
 	log.Debugf("Update repo %s at %s\n", g.Name, g.Location)
 
-	clonePath := filepath.Join(paths.AppPaths.ReposDirectory)
-
 	w := log.New().WriterLevel(log.DebugLevel)
 	defer w.Close()
 
-	repo, err := git.PlainOpen(clonePath)
+	repo, err := git.PlainOpen(g.Path)
 	if err != nil {
 		return err
 	}
@@ -104,6 +106,24 @@ func (g *GitRepoLoader) Update() error {
 
 func (g *GitRepoLoader) Remove() error {
 	return nil
+}
+
+func (g *GitRepoLoader) HasPackage(name string) bool {
+	pkgPath := filepath.Join(g.Path, name)
+
+	if _, err := os.ReadDir(pkgPath); err == nil {
+		return true
+	}
+
+	return false
+}
+
+func (g *GitRepoLoader) GetPath() string {
+	return g.Path
+}
+
+func (g *GitRepoLoader) GetLocation() string {
+	return g.Location
 }
 
 type CurlRepoLoader struct {
