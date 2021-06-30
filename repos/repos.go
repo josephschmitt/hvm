@@ -70,7 +70,15 @@ func (g *GitRepoLoader) Update() error {
 	defer w.Close()
 
 	repo, err := git.PlainOpen(g.Path)
-	if err != nil {
+	if err == git.ErrRepositoryNotExists {
+		// Clone the repo, then try again
+		g.Get()
+
+		repo, err = git.PlainOpen(g.Path)
+		if err != nil {
+			return err
+		}
+	} else if err != nil {
 		return err
 	}
 
