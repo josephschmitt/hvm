@@ -8,6 +8,7 @@ import (
 
 	"github.com/alecthomas/colour"
 	"github.com/alecthomas/hcl"
+	"github.com/blang/semver/v4"
 	"github.com/imdario/mergo"
 	"github.com/josephschmitt/hvm/paths"
 	"github.com/josephschmitt/hvm/repos"
@@ -93,20 +94,25 @@ func (man *PackageManifest) Merge(
 		return err
 	}
 
+	ctxVer, err := semver.Parse(ctx.Version)
+	if err != nil {
+		return err
+	}
+
 	for _, version := range conf.Versions {
-		// TODO: Match version ranges at some point instead of just exact versions
-		if ctx.Version != version.Version {
+		expectedRange, err := semver.ParseRange(version.Version)
+		if err != nil || expectedRange == nil || !expectedRange(ctxVer) {
 			continue
 		}
 
-		if err := mergo.Merge(man, version, mergo.WithOverride); err != nil {
+		if err := mergo.Merge(&man.PackageManifestOptions, version.PackageManifestOptions, mergo.WithOverride); err != nil {
 			log.Error(err)
 			return err
 		}
 	}
 
 	if overrides != nil {
-		if err := mergo.Merge(&conf, overrides, mergo.WithOverride); err != nil {
+		if err := mergo.Merge(&man.PackageManifestOptions, overrides, mergo.WithOverride); err != nil {
 			log.Error(err)
 			return err
 		}

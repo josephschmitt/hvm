@@ -7,6 +7,7 @@ require (
 	github.com/alecthomas/hcl v0.1.13
 	github.com/alecthomas/kong v0.2.17
 	github.com/alecthomas/kong-hcl v1.0.1
+	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/go-git/go-git/v5 v5.4.2 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0

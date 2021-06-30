@@ -166,27 +166,31 @@ func DownloadAndExtractPackage(
 	man *manifest.PackageManifest,
 	manCtx *manifest.PackageManifestContext,
 ) error {
-	log.Infof(colour.Sprintf("Downloading ^3%s@%s^R from ^2%s^R...\n", man.Name, man.Version,
-		man.Source))
+	name := man.Name
+	version := man.Version
+	source := man.Source
+	extract := man.Extract
 
-	if man.Version == "" {
+	log.Infof(colour.Sprintf("Downloading ^3%s@%s^R from ^2%s^R...\n", name, version, source))
+
+	if version == "" {
 		return fmt.Errorf("no version set for package \"%s\", please set a version in config.hcl",
-			man.Name)
+			name)
 	}
-	if man.Source == "" || strings.Contains(man.Source, "${") {
-		return fmt.Errorf("no source URL set for package \"%s\"", man.Name)
+	if source == "" || strings.Contains(source, "${") {
+		return fmt.Errorf("no source URL set for package \"%s\"", name)
 	}
 
-	resp, err := http.Get(man.Source)
+	resp, err := http.Get(source)
 	if err != nil {
 		return err
 	} else if resp.StatusCode >= 400 {
-		return fmt.Errorf(colour.Sprintf("failed to download ^3%s@%s^R from ^1%s^R...", man.Name,
-			man.Version, man.Source))
+		return fmt.Errorf(colour.Sprintf("failed to download ^3%s@%s^R from ^1%s^R...", name,
+			version, source))
 	}
 	defer resp.Body.Close()
 
-	dlFilePath := filepath.Join(paths.AppPaths.TempDirectory, filepath.Base(man.Source))
+	dlFilePath := filepath.Join(paths.AppPaths.TempDirectory, filepath.Base(source))
 	err = os.MkdirAll(filepath.Dir(dlFilePath), os.ModePerm)
 	if err != nil {
 		return err
@@ -217,12 +221,12 @@ func DownloadAndExtractPackage(
 		return err
 	}
 
-	if man.Extract != "" {
-		extractCmdParts := strings.Split(man.Extract, " ")
+	if extract != "" {
+		extractCmdParts := strings.Split(extract, " ")
 		extractCmd := extractCmdParts[0]
 		extractArgs := extractCmdParts[1:]
 
-		log.Debugf("Extract: %s", man.Extract)
+		log.Debugf("Extract: %s", extract)
 
 		cmd := exec.Command(extractCmd, extractArgs...)
 		cmd.Dir = paths.AppPaths.TempDirectory
@@ -236,7 +240,7 @@ func DownloadAndExtractPackage(
 
 		log.Debugf(colour.Sprintf("Successfully extracted to ^3%s^R\n", outDir))
 	} else {
-		outputPath := filepath.Join(outDir, man.Name)
+		outputPath := filepath.Join(outDir, name)
 		outputFile, err := os.Create(outputPath)
 		if err != nil {
 			return err
