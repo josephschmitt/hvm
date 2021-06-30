@@ -8,6 +8,7 @@ import (
 
 	"github.com/alecthomas/colour"
 	"github.com/alecthomas/hcl"
+	"github.com/blang/semver/v4"
 	"github.com/imdario/mergo"
 	"github.com/josephschmitt/hvm/paths"
 	"github.com/josephschmitt/hvm/repos"
@@ -48,16 +49,23 @@ func NewPackageManfiest(
 
 	conf := &PackageManifestConfig{}
 
-	manTmpl, err := conf.GetManifestTemplate(name, pths)
-	if err != nil {
+	if manTmpl, err := conf.GetManifestTemplate(name, pths); err == nil {
+		if err := conf.Render(manTmpl, ctx); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := conf.Merge(overrides, ctx); err != nil {
 		return nil, err
 	}
 
-	if err := conf.Render(manTmpl, ctx); err != nil {
-		return nil, err
+	if manTmpl, err := hcl.Marshal(conf); err == nil {
+		if err := conf.Render(manTmpl, ctx); err != nil {
+			return nil, err
+		}
 	}
 
-	if err := man.Merge(ctx, conf, overrides); err != nil {
+	if err := mergo.Merge(&man.PackageManifestOptions, conf.PackageManifestOptions, mergo.WithOverride); err != nil {
 		return nil, err
 	}
 
@@ -78,46 +86,6 @@ func (man *PackageManifest) UpdateRepos(pths *paths.Paths) error {
 		if err := loader.Get(); err != nil {
 			return err
 		}
-	}
-
-	return nil
-}
-
-func (man *PackageManifest) Merge(
-	ctx *PackageManifestContext,
-	conf *PackageManifestConfig,
-	overrides *PackageManifestOptions,
-) error {
-	if err := mergo.Merge(&man.PackageManifestOptions, conf.PackageManifestOptions, mergo.WithOverride); err != nil {
-		log.Error(err)
-		return err
-	}
-
-	for _, version := range conf.Versions {
-		// TODO: Match version ranges at some point instead of just exact versions
-		if ctx.Version != version.Version {
-			continue
-		}
-
-		if err := mergo.Merge(man, version, mergo.WithOverride); err != nil {
-			log.Error(err)
-			return err
-		}
-	}
-
-	if overrides != nil {
-		if err := mergo.Merge(&conf, overrides, mergo.WithOverride); err != nil {
-			log.Error(err)
-			return err
-		}
-
-		// Marshal newly merged manifest back into an hcl template and re-render with new merged data
-		manTmpl, err := hcl.Marshal(conf)
-		if err != nil {
-			return err
-		}
-
-		conf.Render(manTmpl, ctx)
 	}
 
 	return nil
@@ -144,6 +112,37 @@ func NewPackageManfiestConfig(name string, pths *paths.Paths) (*PackageManifestC
 	}
 
 	return conf, nil
+}
+
+func (conf *PackageManifestConfig) Merge(
+	overrides *PackageManifestOptions,
+	ctx *PackageManifestContext,
+) error {
+	ctxVer, err := semver.Parse(ctx.Version)
+	if err != nil {
+		return err
+	}
+
+	for _, version := range conf.Versions {
+		expectedRange, err := semver.ParseRange(version.Version)
+		if err != nil || expectedRange == nil || !expectedRange(ctxVer) {
+			continue
+		}
+
+		if err := mergo.Merge(&conf.PackageManifestOptions, version.PackageManifestOptions, mergo.WithOverride); err != nil {
+			log.Error(err)
+			return err
+		}
+	}
+
+	if overrides != nil {
+		if err := mergo.Merge(&conf.PackageManifestOptions, overrides, mergo.WithOverride); err != nil {
+			log.Error(err)
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (conf *PackageManifestConfig) Render(data []byte, ctx *PackageManifestContext) error {

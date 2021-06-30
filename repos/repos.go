@@ -9,7 +9,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const DefaultRepository = "git@github.com:josephschmitt/hvm-packages.git"
+const DefaultRepository = "https://github.com/josephschmitt/hvm-packages.git"
 
 type RepoLoader interface {
 	Get() error
