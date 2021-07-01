@@ -192,6 +192,7 @@ rm -r "${tmpdir}"
 
 {
   printf "\nRunning post-install...\n"
+  "${installDir}/hvm" "update-repos" 2> /dev/null || printf ""
   "${installDir}/hvm" "install-completions" 2> /dev/null || printf ""
 }
 printf "HVM %s has been downloaded and installed to $(cyan "${installDir}").\n" "$(yellow "${version}")"
