@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"regexp"
 
 	"github.com/pkg/errors"
 )
@@ -98,6 +99,11 @@ func ConfigFiles(pths *Paths) []string {
 	}
 
 	return files
+}
+
+func (pths *Paths) ResolveDir(dir string) string {
+	var homeDirRegexp = regexp.MustCompile(`^~|(?:\${?HOME}?)(/.*)?`)
+	return homeDirRegexp.ReplaceAllString(dir, pths.HomeDirectory+"$1")
 }
 
 func init() {

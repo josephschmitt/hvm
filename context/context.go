@@ -2,8 +2,10 @@ package context
 
 import (
 	"os"
+	"path/filepath"
 
 	"github.com/josephschmitt/hvm/manifest"
+	"github.com/kardianos/osext"
 
 	"github.com/alecthomas/hcl"
 	"github.com/imdario/mergo"
@@ -15,15 +17,17 @@ import (
 const DefaultLogLevel = "info"
 
 type Context struct {
-	Debug *log.Level
-	Use   map[string]string
+	Debug   *log.Level
+	Use     map[string]string
+	LinkDir string
 
 	Repositories []string
 	Packages     map[string]*manifest.PackageManifestOptions
+	Paths        *paths.Paths
 }
 
-func NewContext(logLevel string) (*Context, error) {
-	ctx := &Context{}
+func NewContext(logLevel string, pths *paths.Paths) (*Context, error) {
+	ctx := &Context{Paths: pths}
 	if err := ctx.Synthesize(); err != nil {
 		return nil, err
 	}
@@ -47,12 +51,12 @@ func (ctx *Context) SetLogLevel(level string) (log.Level, error) {
 	return logLevel, nil
 }
 
-func (context *Context) Synthesize() error {
-	if context.Packages == nil {
-		context.Packages = make(map[string]*manifest.PackageManifestOptions)
+func (ctx *Context) Synthesize() error {
+	if ctx.Packages == nil {
+		ctx.Packages = make(map[string]*manifest.PackageManifestOptions)
 	}
 
-	configFiles := paths.ConfigFiles(paths.AppPaths)
+	configFiles := paths.ConfigFiles(ctx.Paths)
 
 	for _, confPath := range configFiles {
 		hclFile, err := os.ReadFile(confPath)
@@ -62,9 +66,19 @@ func (context *Context) Synthesize() error {
 
 		foundConfig := &Config{}
 		hcl.Unmarshal(hclFile, foundConfig)
-		if err := context.Merge(foundConfig); err != nil {
+		if err := ctx.Merge(foundConfig); err != nil {
 			return err
 		}
+	}
+
+	if ctx.LinkDir == "" {
+		binPath, err := osext.Executable()
+		if err != nil {
+			return err
+		}
+
+		// Default link dir to wherever the hvm binary lives
+		ctx.LinkDir = ctx.Paths.ResolveDir(filepath.Dir(binPath))
 	}
 
 	return nil
@@ -95,6 +109,10 @@ func (ctx *Context) Merge(config *Config) error {
 		ctx.Use = config.Use
 	}
 
+	if ctx.LinkDir == "" {
+		ctx.LinkDir = ctx.Paths.ResolveDir(config.LinkDir)
+	}
+
 	return nil
 }
 
@@ -102,6 +120,7 @@ func (ctx *Context) Merge(config *Config) error {
 type Config struct {
 	Debug    string            `hcl:"debug,optional"`
 	Use      map[string]string `hcl:"use,optional"`
+	LinkDir  string            `hcl:"linkdir,optional"`
 	Packages []PackageBlock    `hcl:"package,block,optional"`
 }
 

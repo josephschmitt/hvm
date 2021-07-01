@@ -15,9 +15,7 @@ import (
 	"github.com/alecthomas/colour"
 	"github.com/josephschmitt/hvm/context"
 	"github.com/josephschmitt/hvm/manifest"
-	"github.com/josephschmitt/hvm/paths"
 	"github.com/josephschmitt/hvm/tmpl"
-	"github.com/kardianos/osext"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -36,7 +34,7 @@ func Link(ctx *context.Context, names []string, force bool) error {
 
 		var bins []string
 
-		if manConf, err := manifest.NewPackageManfiestConfig(name, paths.AppPaths); err == nil {
+		if manConf, err := manifest.NewPackageManfiestConfig(name, ctx.Paths); err == nil {
 			for k := range manConf.Bins {
 				bins = append(bins, k)
 			}
@@ -46,7 +44,7 @@ func Link(ctx *context.Context, names []string, force bool) error {
 
 		for _, bin := range bins {
 			script := tmpl.BuildRunScript(name, bin)
-			path := getScriptPath(bin)
+			path := filepath.Join(ctx.LinkDir, bin)
 
 			err := os.MkdirAll(filepath.Dir(path), os.ModePerm)
 			if err != nil {
@@ -93,7 +91,7 @@ func Link(ctx *context.Context, names []string, force bool) error {
 
 func UnLink(ctx *context.Context, names []string, force bool) error {
 	for _, name := range names {
-		path := getScriptPath(name)
+		path := filepath.Join(ctx.LinkDir, name)
 		file, err := os.Open(path)
 		if os.IsNotExist(err) {
 			log.Warn(colour.Sprintf("^2%s^R does not exist, skipping...", path))
@@ -128,9 +126,9 @@ func UnLink(ctx *context.Context, names []string, force bool) error {
 }
 
 func Run(ctx *context.Context, name string, bin string, args ...string) error {
-	manCtx := manifest.NewManifestContext(name, ctx.Use[bin], paths.AppPaths)
+	manCtx := manifest.NewManifestContext(name, ctx.Use[bin], ctx.Paths)
 
-	man, err := manifest.NewPackageManfiest(name, manCtx, ctx.Packages[name], paths.AppPaths)
+	man, err := manifest.NewPackageManfiest(name, manCtx, ctx.Packages[name], ctx.Paths)
 	if err != nil {
 		return err
 	}
@@ -150,7 +148,7 @@ func Run(ctx *context.Context, name string, bin string, args ...string) error {
 	log.Debugf(colour.Sprintf("Run ^3%s^R@%s^R with args ^5%s^R\n", cmdName, man.Version, args))
 
 	cmd := exec.Command(cmdName, args...)
-	cmd.Dir = paths.AppPaths.WorkingDirectory
+	cmd.Dir = ctx.Paths.WorkingDirectory
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
@@ -202,7 +200,7 @@ func DownloadAndExtractPackage(
 	}
 	defer resp.Body.Close()
 
-	dlFilePath := filepath.Join(paths.AppPaths.TempDirectory, filepath.Base(source))
+	dlFilePath := filepath.Join(ctx.Paths.TempDirectory, filepath.Base(source))
 	err = os.MkdirAll(filepath.Dir(dlFilePath), os.ModePerm)
 	if err != nil {
 		return err
@@ -241,7 +239,7 @@ func DownloadAndExtractPackage(
 		log.Debugf("Extract: %s", extract)
 
 		cmd := exec.Command(extractCmd, extractArgs...)
-		cmd.Dir = paths.AppPaths.TempDirectory
+		cmd.Dir = ctx.Paths.TempDirectory
 		cmd.Stdout = nil
 		cmd.Stderr = os.Stderr
 		cmd.Stdin = file
@@ -272,11 +270,6 @@ func DownloadAndExtractPackage(
 	}
 
 	return nil
-}
-
-func getScriptPath(name string) string {
-	binPath, _ := osext.Executable()
-	return filepath.Join(filepath.Dir(binPath), name)
 }
 
 func hasPackageLocally(outdir string, bin string) bool {
