@@ -37,19 +37,18 @@ func NewPackageManfiest(
 	name string,
 	ctx *PackageManifestContext,
 	overrides *PackageManifestOptions,
-	pths *paths.Paths,
 ) (*PackageManifest, error) {
 	man := &PackageManifest{
 		Name:    name,
 		Version: ctx.Version,
 	}
-	if err := man.UpdateRepos(pths); err != nil {
+	if err := man.UpdateRepos(); err != nil {
 		return nil, err
 	}
 
 	conf := &PackageManifestConfig{}
 
-	if manTmpl, err := conf.GetManifestTemplate(name, pths); err == nil {
+	if manTmpl, err := conf.GetManifestTemplate(name); err == nil {
 		if err := conf.Render(manTmpl, ctx); err != nil {
 			return nil, err
 		}
@@ -80,8 +79,8 @@ func NewPackageManfiest(
 	return man, nil
 }
 
-func (man *PackageManifest) UpdateRepos(pths *paths.Paths) error {
-	if _, err := os.Stat(pths.ReposDirectory); os.IsNotExist(err) {
+func (man *PackageManifest) UpdateRepos() error {
+	if _, err := os.Stat(paths.AppPaths.ReposDirectory); os.IsNotExist(err) {
 		loader := repos.NewGitRepoLoader("", "")
 		if err := loader.Get(); err != nil {
 			return err
@@ -99,10 +98,10 @@ type PackageManifestConfig struct {
 	Versions []PackageManifestVersionBlock `hcl:"version,block,optional"`
 }
 
-func NewPackageManfiestConfig(name string, pths *paths.Paths) (*PackageManifestConfig, error) {
+func NewPackageManfiestConfig(name string) (*PackageManifestConfig, error) {
 	conf := &PackageManifestConfig{}
 
-	manTmpl, err := conf.GetManifestTemplate(name, pths)
+	manTmpl, err := conf.GetManifestTemplate(name)
 	if err != nil {
 		return nil, err
 	}
@@ -161,8 +160,8 @@ func (conf *PackageManifestConfig) Render(data []byte, ctx *PackageManifestConte
 	return nil
 }
 
-func (*PackageManifestConfig) GetManifestTemplate(name string, pths *paths.Paths) ([]byte, error) {
-	configFilePath := filepath.Join(pths.ReposDirectory, name+".hcl")
+func (*PackageManifestConfig) GetManifestTemplate(name string) ([]byte, error) {
+	configFilePath := filepath.Join(paths.AppPaths.ReposDirectory, name+".hcl")
 	data, err := os.ReadFile(configFilePath)
 	if os.IsNotExist(err) {
 		return nil, fmt.Errorf(colour.Sprintf("no hvm-package found named \"^2%s^R\" at ^6%s^R\n"+
@@ -187,14 +186,14 @@ type PackageManifestContext struct {
 	OutputDir string
 }
 
-func NewManifestContext(name string, version string, pths *paths.Paths) *PackageManifestContext {
+func NewManifestContext(name string, version string) *PackageManifestContext {
 	platform := Platform()
 
 	return &PackageManifestContext{
 		Version:   version,
 		Platform:  platform,
 		XPlatform: XPlatform(platform),
-		OutputDir: filepath.Join(pths.PkgsDirectory, name, version),
+		OutputDir: filepath.Join(paths.AppPaths.PkgsDirectory, name, version),
 	}
 }
 

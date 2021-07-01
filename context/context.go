@@ -23,11 +23,10 @@ type Context struct {
 
 	Repositories []string
 	Packages     map[string]*manifest.PackageManifestOptions
-	Paths        *paths.Paths
 }
 
-func NewContext(logLevel string, pths *paths.Paths) (*Context, error) {
-	ctx := &Context{Paths: pths}
+func NewContext(logLevel string) (*Context, error) {
+	ctx := &Context{}
 	if err := ctx.Synthesize(); err != nil {
 		return nil, err
 	}
@@ -56,7 +55,7 @@ func (ctx *Context) Synthesize() error {
 		ctx.Packages = make(map[string]*manifest.PackageManifestOptions)
 	}
 
-	configFiles := paths.ConfigFiles(ctx.Paths)
+	configFiles := paths.AppPaths.ConfigFiles()
 
 	for _, confPath := range configFiles {
 		hclFile, err := os.ReadFile(confPath)
@@ -78,7 +77,7 @@ func (ctx *Context) Synthesize() error {
 		}
 
 		// Default link dir to wherever the hvm binary lives
-		ctx.LinkDir = ctx.Paths.ResolveDir(filepath.Dir(binPath))
+		ctx.LinkDir = paths.AppPaths.ResolveDir(filepath.Dir(binPath))
 	}
 
 	return nil
@@ -110,7 +109,7 @@ func (ctx *Context) Merge(config *Config) error {
 	}
 
 	if ctx.LinkDir == "" {
-		ctx.LinkDir = ctx.Paths.ResolveDir(config.LinkDir)
+		ctx.LinkDir = paths.AppPaths.ResolveDir(config.LinkDir)
 	}
 
 	return nil

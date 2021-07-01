@@ -84,7 +84,7 @@ func FindGitRoot() string {
 	return FindDirGitRoot(dir)
 }
 
-func ConfigDirs(pths *Paths) []string {
+func (pths *Paths) ConfigDirs() []string {
 	return []string{
 		filepath.Join(pths.WorkingDirectory, ".hvm"),
 		filepath.Join(pths.GitRoot, ".hvm"),
@@ -92,9 +92,9 @@ func ConfigDirs(pths *Paths) []string {
 	}
 }
 
-func ConfigFiles(pths *Paths) []string {
+func (pths *Paths) ConfigFiles() []string {
 	var files []string
-	for _, dir := range ConfigDirs(pths) {
+	for _, dir := range pths.ConfigDirs() {
 		files = append(files, filepath.Join(dir, "config.hcl"))
 	}
 

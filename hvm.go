@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/josephschmitt/hvm/paths"
 	"github.com/josephschmitt/hvm/repos"
 
 	"github.com/alecthomas/colour"
@@ -34,7 +35,7 @@ func Link(ctx *context.Context, names []string, force bool) error {
 
 		var bins []string
 
-		if manConf, err := manifest.NewPackageManfiestConfig(name, ctx.Paths); err == nil {
+		if manConf, err := manifest.NewPackageManfiestConfig(name); err == nil {
 			for k := range manConf.Bins {
 				bins = append(bins, k)
 			}
@@ -126,9 +127,9 @@ func UnLink(ctx *context.Context, names []string, force bool) error {
 }
 
 func Run(ctx *context.Context, name string, bin string, args ...string) error {
-	manCtx := manifest.NewManifestContext(name, ctx.Use[bin], ctx.Paths)
+	manCtx := manifest.NewManifestContext(name, ctx.Use[bin])
 
-	man, err := manifest.NewPackageManfiest(name, manCtx, ctx.Packages[name], ctx.Paths)
+	man, err := manifest.NewPackageManfiest(name, manCtx, ctx.Packages[name])
 	if err != nil {
 		return err
 	}
@@ -148,7 +149,7 @@ func Run(ctx *context.Context, name string, bin string, args ...string) error {
 	log.Debugf(colour.Sprintf("Run ^3%s^R@%s^R with args ^5%s^R\n", cmdName, man.Version, args))
 
 	cmd := exec.Command(cmdName, args...)
-	cmd.Dir = ctx.Paths.WorkingDirectory
+	cmd.Dir = paths.AppPaths.WorkingDirectory
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
@@ -200,7 +201,7 @@ func DownloadAndExtractPackage(
 	}
 	defer resp.Body.Close()
 
-	dlFilePath := filepath.Join(ctx.Paths.TempDirectory, filepath.Base(source))
+	dlFilePath := filepath.Join(paths.AppPaths.TempDirectory, filepath.Base(source))
 	err = os.MkdirAll(filepath.Dir(dlFilePath), os.ModePerm)
 	if err != nil {
 		return err
@@ -239,7 +240,7 @@ func DownloadAndExtractPackage(
 		log.Debugf("Extract: %s", extract)
 
 		cmd := exec.Command(extractCmd, extractArgs...)
-		cmd.Dir = ctx.Paths.TempDirectory
+		cmd.Dir = paths.AppPaths.TempDirectory
 		cmd.Stdout = nil
 		cmd.Stderr = os.Stderr
 		cmd.Stdin = file

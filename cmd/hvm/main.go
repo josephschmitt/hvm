@@ -10,7 +10,6 @@ import (
 	"github.com/josephschmitt/hvm/cmd/hvm/unlink"
 	"github.com/josephschmitt/hvm/cmd/hvm/version"
 	"github.com/josephschmitt/hvm/context"
-	"github.com/josephschmitt/hvm/paths"
 
 	"github.com/alecthomas/kong"
 	"github.com/posener/complete"
@@ -42,7 +41,7 @@ func main() {
 	kCtx, err := parser.Parse(os.Args[1:])
 	parser.FatalIfErrorf(err)
 
-	ctx, err := context.NewContext(hvm.Debug, paths.AppPaths)
+	ctx, err := context.NewContext(hvm.Debug)
 	kCtx.FatalIfErrorf(err)
 
 	err = kCtx.Run(ctx)
