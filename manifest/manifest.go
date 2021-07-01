@@ -48,11 +48,6 @@ func NewPackageManfiest(
 		return nil, err
 	}
 
-	// Use version declared in the manifest as a "default"
-	if ctx.Version == "" {
-		ctx.Version = conf.Version
-	}
-
 	if err := conf.Merge(overrides, ctx); err != nil {
 		return nil, err
 	}
@@ -114,7 +109,11 @@ func (conf *PackageManifestConfig) Merge(
 	overrides *PackageManifestOptions,
 	ctx *PackageManifestContext,
 ) error {
-	ctxVer, err := semver.Parse(ctx.Version)
+	if ctx.Version != "" {
+		conf.Version = ctx.Version
+	}
+
+	ctxVer, err := semver.Parse(conf.Version)
 	if err != nil {
 		return err
 	}
@@ -151,6 +150,11 @@ func (conf *PackageManifestConfig) Parse() error {
 }
 
 func (conf *PackageManifestConfig) Render(ctx *PackageManifestContext) error {
+	// Use version declared in the manifest as a "default"
+	if ctx.Version == "" {
+		ctx.Version = conf.Version
+	}
+
 	data, err := hcl.Marshal(conf)
 	if err != nil {
 		return err

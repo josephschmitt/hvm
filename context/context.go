@@ -115,6 +115,13 @@ func (ctx *Context) Merge(config *Config) error {
 	return nil
 }
 
+func (ctx *Context) UseVersion(name string, version string) {
+	if ctx.Use == nil {
+		ctx.Use = make(map[string]string)
+	}
+	ctx.Use[name] = version
+}
+
 // Config is the result of unmarshalling a config.hcl file
 type Config struct {
 	Debug    string            `hcl:"debug,optional"`

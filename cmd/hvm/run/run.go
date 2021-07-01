@@ -10,12 +10,17 @@ type RunCmd struct {
 	Args []string `kong:"arg,optional"`
 
 	Bin string
+	Use string
 }
 
 func (c *RunCmd) Run(ctx *context.Context) error {
 	bin := c.Bin
 	if bin == "" {
 		bin = c.Name
+	}
+
+	if c.Use != "" {
+		ctx.UseVersion(c.Name, c.Use)
 	}
 
 	return hvm.Run(ctx, c.Name, bin, c.Args...)
