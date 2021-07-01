@@ -17,6 +17,7 @@ import (
 )
 
 type PackageManifestOptions struct {
+	Version string            `hcl:"version,optional"`
 	Exec    string            `hcl:"exec,optional"`
 	Bins    map[string]string `hcl:"bins,optional"`
 	Source  string            `hcl:"source,optional"`
@@ -27,8 +28,7 @@ type PackageManifestOptions struct {
 // PackageManifest contains the parsed result of the .hcl config file for a package. It's used to
 // determine how to download a specific package project
 type PackageManifest struct {
-	Name    string
-	Version string
+	Name string
 
 	PackageManifestOptions
 }
@@ -38,30 +38,27 @@ func NewPackageManfiest(
 	ctx *PackageManifestContext,
 	overrides *PackageManifestOptions,
 ) (*PackageManifest, error) {
-	man := &PackageManifest{
-		Name:    name,
-		Version: ctx.Version,
-	}
+	man := &PackageManifest{Name: name}
 	if err := man.UpdateRepos(); err != nil {
 		return nil, err
 	}
 
-	conf := &PackageManifestConfig{}
+	conf := &PackageManifestConfig{Name: name}
+	if err := conf.Parse(); err != nil {
+		return nil, err
+	}
 
-	if manTmpl, err := conf.GetManifestTemplate(name); err == nil {
-		if err := conf.Render(manTmpl, ctx); err != nil {
-			return nil, err
-		}
+	// Use version declared in the manifest as a "default"
+	if ctx.Version == "" {
+		ctx.Version = conf.Version
 	}
 
 	if err := conf.Merge(overrides, ctx); err != nil {
 		return nil, err
 	}
 
-	if manTmpl, err := hcl.Marshal(conf); err == nil {
-		if err := conf.Render(manTmpl, ctx); err != nil {
-			return nil, err
-		}
+	if err := conf.Render(ctx); err != nil {
+		return nil, err
 	}
 
 	if err := mergo.Merge(&man.PackageManifestOptions, conf.PackageManifestOptions, mergo.WithOverride); err != nil {
@@ -93,7 +90,6 @@ func (man *PackageManifest) UpdateRepos() error {
 type PackageManifestConfig struct {
 	Name        string `hcl:"name"`
 	Description string `hcl:"description,optional"`
-	Version     string `hcl:"version,optional"`
 
 	PackageManifestOptions
 	Versions []PackageManifestVersionBlock `hcl:"version,block,optional"`
@@ -118,12 +114,7 @@ func (conf *PackageManifestConfig) Merge(
 	overrides *PackageManifestOptions,
 	ctx *PackageManifestContext,
 ) error {
-	version := ctx.Version
-	if version == "" {
-		version = conf.Version
-	}
-
-	ctxVer, err := semver.Parse(version)
+	ctxVer, err := semver.Parse(ctx.Version)
 	if err != nil {
 		return err
 	}
@@ -150,7 +141,21 @@ func (conf *PackageManifestConfig) Merge(
 	return nil
 }
 
-func (conf *PackageManifestConfig) Render(data []byte, ctx *PackageManifestContext) error {
+func (conf *PackageManifestConfig) Parse() error {
+	data, err := conf.GetManifestTemplate(conf.Name)
+	if err != nil {
+		return err
+	}
+
+	return hcl.Unmarshal(data, conf)
+}
+
+func (conf *PackageManifestConfig) Render(ctx *PackageManifestContext) error {
+	data, err := hcl.Marshal(conf)
+	if err != nil {
+		return err
+	}
+
 	t := fasttemplate.New(string(data), "${", "}")
 	s := t.ExecuteString(map[string]interface{}{
 		"version":    ctx.Version,
@@ -159,11 +164,7 @@ func (conf *PackageManifestConfig) Render(data []byte, ctx *PackageManifestConte
 		"output":     ctx.OutputDir,
 	})
 
-	if err := hcl.Unmarshal([]byte(s), conf); err != nil {
-		return err
-	}
-
-	return nil
+	return hcl.Unmarshal([]byte(s), conf)
 }
 
 func (*PackageManifestConfig) GetManifestTemplate(name string) ([]byte, error) {
