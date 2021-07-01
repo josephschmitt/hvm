@@ -93,6 +93,7 @@ func (man *PackageManifest) UpdateRepos() error {
 type PackageManifestConfig struct {
 	Name        string `hcl:"name"`
 	Description string `hcl:"description,optional"`
+	Version     string `hcl:"version,optional"`
 
 	PackageManifestOptions
 	Versions []PackageManifestVersionBlock `hcl:"version,block,optional"`
@@ -117,7 +118,12 @@ func (conf *PackageManifestConfig) Merge(
 	overrides *PackageManifestOptions,
 	ctx *PackageManifestContext,
 ) error {
-	ctxVer, err := semver.Parse(ctx.Version)
+	version := ctx.Version
+	if version == "" {
+		version = conf.Version
+	}
+
+	ctxVer, err := semver.Parse(version)
 	if err != nil {
 		return err
 	}
