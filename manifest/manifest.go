@@ -165,6 +165,8 @@ func (conf *PackageManifestConfig) Render(ctx *PackageManifestContext) error {
 		"version":    ctx.Version,
 		"platform":   ctx.Platform,
 		"x-platform": ctx.XPlatform,
+		"os":         runtime.GOOS,
+		"arch":       runtime.GOARCH,
 		"output":     ctx.OutputDir,
 	})
 
