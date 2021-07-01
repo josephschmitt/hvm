@@ -128,7 +128,10 @@ fi
 
 version="${HVM_INSTALL_VERSION:-"latest"}"
 if [ "${version}" == "latest" ]; then
-  version="$(curl -s "https://api.github.com/repos/josephschmitt/hvm/releases/latest" | jq -r '.tag_name')"
+  version="$(curl --silent "https://api.github.com/repos/josephschmitt/hvm/releases/latest" |
+    grep '"tag_name":' |
+    sed -E 's/.*"([^"]+)".*/\1/'
+  )"
 fi
 
 if test "$version" = "${version#v}"; then
