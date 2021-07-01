@@ -92,7 +92,7 @@ type PackageManifestConfig struct {
 	Description string `hcl:"description,optional"`
 
 	PackageManifestOptions
-	Versions []PackageManifestVersionBlock `hcl:"version,block,optional"`
+	Versions []PackageManifestVersionBlock `hcl:"with-version,block,optional"`
 }
 
 func NewPackageManfiestConfig(name string) (*PackageManifestConfig, error) {
